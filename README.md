@@ -53,3 +53,9 @@ Notes:
 
 - WhatsApp and Telegram are stubs that record messages in memory; an administrator can simulate an outage.
 - Protocol documents are stored on the local filesystem behind the `FileStorage` interface (`STORAGE_PATH`).
+
+## CI/CD
+
+- `.github/workflows/ci.yml` — on pull requests and pushes to `main`: `mvn verify` (unit, module and integration tests), then a Docker image build check.
+- `.github/workflows/cd.yml` — after CI succeeds on `main` (or manually): builds the image and pushes it to `ghcr.io/<owner>/oss-portal` as `latest` and `sha-<short>`.
+- `deploy/compose.yaml` — runs the published image with PostgreSQL; required variables are `IMAGE` and `JWT_SECRET`.
