@@ -34,3 +34,5 @@ oss:
   bootstrap-admin:
     email: ${ADMIN_EMAIL:}
     password: ${ADMIN_PASSWORD:}
+  storage:
+    path: ${STORAGE_PATH:storage}
