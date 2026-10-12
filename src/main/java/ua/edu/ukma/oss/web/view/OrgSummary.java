@@ -1,6 +1,5 @@
 package ua.edu.ukma.oss.web.view;
 
-import java.util.List;
 import ua.edu.ukma.oss.meeting.MeetingDto;
 import ua.edu.ukma.oss.organization.OrganizationDto;
 
@@ -9,6 +8,5 @@ import ua.edu.ukma.oss.organization.OrganizationDto;
  *
  * @param nextMeeting nearest planned meeting, may be {@code null}
  */
-public record OrgSummary(OrganizationDto org, int memberCount, MeetingDto nextMeeting,
-                         List<ProtocolEntry> latestProtocols) {
+public record OrgSummary(OrganizationDto org, int memberCount, MeetingDto nextMeeting) {
 }

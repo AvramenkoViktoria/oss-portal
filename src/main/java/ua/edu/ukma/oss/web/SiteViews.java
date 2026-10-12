@@ -1,6 +1,8 @@
 package ua.edu.ukma.oss.web;
 
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -27,11 +29,11 @@ import ua.edu.ukma.oss.voting.VoteRecordDto;
 import ua.edu.ukma.oss.voting.VoteViewFactory;
 import ua.edu.ukma.oss.voting.VotingDto;
 import ua.edu.ukma.oss.voting.VotingService;
+import ua.edu.ukma.oss.web.view.CalendarView;
 import ua.edu.ukma.oss.web.view.MeetingPage;
 import ua.edu.ukma.oss.web.view.MemberRow;
 import ua.edu.ukma.oss.web.view.OrgPage;
 import ua.edu.ukma.oss.web.view.OrgSummary;
-import ua.edu.ukma.oss.web.view.ProtocolEntry;
 import ua.edu.ukma.oss.web.view.ProtocolPage;
 import ua.edu.ukma.oss.web.view.VotingView;
 
@@ -41,7 +43,7 @@ import ua.edu.ukma.oss.web.view.VotingView;
 @Component
 class SiteViews {
 
-    private static final int LATEST_PROTOCOLS = 3;
+    private static final int UPCOMING = 3;
 
     private final OrganizationService organizations;
     private final MeetingService meetings;
@@ -67,26 +69,29 @@ class SiteViews {
 
     OrgSummary summary(OrganizationDto org) {
         MeetingDto next = meetings.byOrg(org.id()).stream()
-                .filter(m -> m.status() == MeetingStatus.PLANNED)
+                .filter(m -> m.status() == MeetingStatus.PLANNED && m.scheduledAt().isAfter(clock.instant()))
                 .min(Comparator.comparing(MeetingDto::scheduledAt)).orElse(null);
-        List<ProtocolEntry> latest = protocols.published(org.id()).stream().limit(LATEST_PROTOCOLS)
-                .map(p -> new ProtocolEntry(p, meetings.get(p.meetingId()))).toList();
-        return new OrgSummary(org, organizations.members(org.id()).size(), next, latest);
+        return new OrgSummary(org, organizations.members(org.id()).size(), next);
     }
 
-    OrgPage orgPage(OrganizationDto org) {
+    OrgPage orgPage(OrganizationDto org, YearMonth month) {
         List<MeetingDto> all = meetings.byOrg(org.id());
-        List<MeetingDto> upcoming = all.stream().filter(m -> m.status() == MeetingStatus.PLANNED)
-                .sorted(Comparator.comparing(MeetingDto::scheduledAt)).toList();
-        List<MeetingDto> past = all.stream().filter(m -> m.status() != MeetingStatus.PLANNED).toList();
-        List<ProtocolDto> published = protocols.published(org.id());
-        Map<Long, MeetingDto> byId = all.stream().collect(Collectors.toMap(MeetingDto::id, Function.identity()));
-        List<ProtocolEntry> entries = published.stream()
-                .map(p -> new ProtocolEntry(p, byId.get(p.meetingId()))).toList();
-        Map<Long, ProtocolDto> byMeeting = published.stream()
-                .collect(Collectors.toMap(ProtocolDto::meetingId, Function.identity()));
-        return new OrgPage(org, memberRows(organizations.members(org.id())), upcoming, past, byMeeting, entries,
+        List<MeetingDto> upcoming = all.stream()
+                .filter(m -> m.status() == MeetingStatus.PLANNED && m.scheduledAt().isAfter(clock.instant()))
+                .sorted(Comparator.comparing(MeetingDto::scheduledAt)).limit(UPCOMING).toList();
+        return new OrgPage(org, memberRows(organizations.members(org.id())), calendar(month, all), upcoming,
                 petitions.byOrg(org.id()));
+    }
+
+    /**
+     * Month grid of the given meetings in the portal's time zone.
+     */
+    CalendarView calendar(YearMonth month, List<MeetingDto> meetingList) {
+        return CalendarView.of(month, clock.getZone(), LocalDate.now(clock), meetingList);
+    }
+
+    YearMonth currentMonth() {
+        return YearMonth.now(clock);
     }
 
     MeetingPage meetingPage(Long meetingId) {

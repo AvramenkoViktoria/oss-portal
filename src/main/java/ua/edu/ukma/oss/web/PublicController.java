@@ -13,6 +13,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import ua.edu.ukma.oss.auth.AuthPrincipal;
 import ua.edu.ukma.oss.organization.OrganizationDto;
 import ua.edu.ukma.oss.organization.OrganizationService;
@@ -21,6 +22,7 @@ import ua.edu.ukma.oss.protocol.ProtocolFile;
 import ua.edu.ukma.oss.protocol.ProtocolReader;
 import ua.edu.ukma.oss.protocol.ProtocolStatus;
 import ua.edu.ukma.oss.shared.NotFoundException;
+import ua.edu.ukma.oss.web.view.CalendarView;
 import ua.edu.ukma.oss.web.view.MeetingPage;
 import ua.edu.ukma.oss.web.view.ProtocolPage;
 
@@ -50,9 +52,9 @@ class PublicController {
     }
 
     @GetMapping("/orgs/{code}")
-    String org(@PathVariable String code, Model model) {
+    String org(@PathVariable String code, @RequestParam(required = false) String month, Model model) {
         OrganizationDto org = access.org(code);
-        model.addAttribute("page", views.orgPage(org));
+        model.addAttribute("page", views.orgPage(org, CalendarView.parseMonth(month, views.currentMonth())));
         return "pages/org";
     }
 

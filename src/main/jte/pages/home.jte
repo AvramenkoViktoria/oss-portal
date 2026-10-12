@@ -17,7 +17,7 @@
                     <h2 style="margin:0"><a href="/orgs/${code}">${s.org().name()}</a></h2>
                     <span class="chip ${code}">${s.org().code().name()}</span>
                 </div>
-                <p class="muted small">Анонси та протоколи — у ${Labels.messenger(s.org().messenger())}.</p>
+                <p class="muted small">Анонси публікуються у ${Labels.messenger(s.org().messenger())}.</p>
                 <dl class="kv">
                     <dt>Склад</dt><dd>${s.memberCount()} осіб</dd>
                     <dt>Наступне засідання</dt>
@@ -30,19 +30,7 @@
                         @endif
                     </dd>
                 </dl>
-                <h3 style="margin-top:1rem">Останні протоколи</h3>
-                @if(s.latestProtocols().isEmpty())
-                    <p class="muted">Опублікованих протоколів поки немає.</p>
-                @else
-                    <ul class="list">
-                        @for(var e : s.latestProtocols())
-                            <li>
-                                <a href="/protocols/${e.protocol().id()}">${e.meeting().title()}</a>
-                                <div class="muted small">опубліковано ${ctx.fmt().date(e.protocol().publishedAt())}</div>
-                            </li>
-                        @endfor
-                    </ul>
-                @endif
+                <p style="margin:1rem 0 0"><a class="btn secondary small" href="/orgs/${code}">Календар засідань</a></p>
             </section>
         @endfor
     </div>

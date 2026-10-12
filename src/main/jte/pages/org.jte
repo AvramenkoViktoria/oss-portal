@@ -37,10 +37,12 @@
     </section>
 
     <section class="section">
-        <h2>Найближчі засідання</h2>
-        @if(page.upcoming().isEmpty())
-            <div class="empty">Засідань не заплановано.</div>
-        @else
+        <h2>Засідання</h2>
+        <div class="card">
+            @template.components.calendar(ctx = ctx, cal = page.calendar(), navPath = "/orgs/" + code, meetingPath = "/meetings/")
+        </div>
+        @if(!page.upcoming().isEmpty())
+            <h3 style="margin-top:1rem">Найближчі</h3>
             <div class="card">
                 <ul class="list">
                     @for(var m : page.upcoming())
@@ -52,53 +54,6 @@
                             @if(m.streamUrl() != null)
                                 <a class="btn secondary small" href="${m.streamUrl()}" rel="noopener" target="_blank">Трансляція</a>
                             @endif
-                        </li>
-                    @endfor
-                </ul>
-            </div>
-        @endif
-    </section>
-
-    <section class="section">
-        <h2>Протоколи</h2>
-        @if(page.protocols().isEmpty())
-            <div class="empty">Опублікованих протоколів поки немає.</div>
-        @else
-            <div class="card">
-                <ul class="list">
-                    @for(var e : page.protocols())
-                        <li class="row between">
-                            <div>
-                                <a href="/protocols/${e.protocol().id()}"><strong>${e.meeting().title()}</strong></a>
-                                <div class="muted small">засідання ${ctx.fmt().date(e.meeting().scheduledAt())} · опубліковано ${ctx.fmt().date(e.protocol().publishedAt())}</div>
-                            </div>
-                            @template.components.chip(css = "published", text = "Опубліковано")
-                        </li>
-                    @endfor
-                </ul>
-            </div>
-        @endif
-    </section>
-
-    <section class="section">
-        <h2>Минулі засідання</h2>
-        @if(page.past().isEmpty())
-            <div class="empty">Ще немає проведених засідань.</div>
-        @else
-            <div class="card">
-                <ul class="list">
-                    @for(var m : page.past())
-                        <li class="row between">
-                            <div>
-                                <a href="/meetings/${m.id()}">${m.title()}</a>
-                                <div class="muted small">${ctx.fmt().dateTime(m.scheduledAt())}</div>
-                            </div>
-                            <span class="row">
-                                @template.components.chip(css = Labels.meetingCss(m.status()), text = Labels.meetingStatus(m.status()))
-                                @if(page.publishedByMeeting().containsKey(m.id()))
-                                    <a class="small" href="/protocols/${page.publishedByMeeting().get(m.id()).id()}">протокол</a>
-                                @endif
-                            </span>
                         </li>
                     @endfor
                 </ul>
