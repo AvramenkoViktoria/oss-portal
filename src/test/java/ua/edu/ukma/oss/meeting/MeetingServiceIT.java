@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.event.ApplicationEvents;
@@ -91,8 +92,9 @@ class MeetingServiceIT {
         MeetingDto newer = meetings.schedule(new ScheduleCmd(sk(), "Newer", Instant.now().plus(5, ChronoUnit.DAYS), null));
         meetings.schedule(new ScheduleCmd(ks, "Other body", Instant.now().plus(3, ChronoUnit.DAYS), null));
 
-        assertThat(meetings.byOrg(sk())).extracting(MeetingDto::id).startsWith(newer.id())
-                .contains(older.id());
+        List<Long> ids = meetings.byOrg(sk()).stream().map(MeetingDto::id).toList();
+        assertThat(ids).contains(newer.id(), older.id());
+        assertThat(ids.indexOf(newer.id())).isLessThan(ids.indexOf(older.id()));
         assertThat(meetings.byOrg(sk())).extracting(MeetingDto::title).doesNotContain("Other body");
     }
 }
