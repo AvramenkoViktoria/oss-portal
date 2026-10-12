@@ -79,7 +79,7 @@ class ProtocolServiceImpl implements ProtocolReader, ProtocolWriter {
     public List<Requirement> approvalRequirements(Long protocolId) {
         Protocol protocol = find(protocolId);
         List<Requirement> all = new ArrayList<>();
-        all.add(new Requirement("document", "Protocol document (PDF or DOCX) is attached", protocol.hasFile()));
+        all.add(new Requirement("document", "Документ протоколу (PDF або DOCX) прикріплено", protocol.hasFile()));
         providers.forEach(p -> all.addAll(p.requirementsFor(protocolId)));
         return all;
     }
@@ -98,10 +98,10 @@ class ProtocolServiceImpl implements ProtocolReader, ProtocolWriter {
     public ProtocolDto createDraft(Long meetingId, String fileKey) {
         MeetingDto meeting = meetings.get(meetingId);
         if (meeting.status() != MeetingStatus.HELD) {
-            throw new BusinessRuleException("A protocol can only be drafted for a held meeting");
+            throw new BusinessRuleException("Протокол можна створити лише для проведеного засідання");
         }
         if (repo.findByMeetingId(meetingId).isPresent()) {
-            throw new BusinessRuleException("The meeting already has a protocol");
+            throw new BusinessRuleException("У цього засідання вже є протокол");
         }
         return toDto(repo.save(new Protocol(meetingId, meeting.orgId(), fileKey)));
     }
@@ -110,11 +110,11 @@ class ProtocolServiceImpl implements ProtocolReader, ProtocolWriter {
     public ProtocolDto attachFile(Long protocolId, String fileName, InputStream content) {
         String extension = extensionOf(fileName);
         if (!ALLOWED_EXTENSIONS.contains(extension)) {
-            throw new BusinessRuleException("Only PDF and DOCX documents are accepted");
+            throw new BusinessRuleException("Приймаються лише документи PDF та DOCX");
         }
         Protocol protocol = find(protocolId);
         if (!protocol.isEditable()) {
-            throw new BusinessRuleException("The document of an approved or published protocol cannot be replaced");
+            throw new BusinessRuleException("Документ затвердженого чи опублікованого протоколу змінити неможливо");
         }
         String key = storage.store(content, fileName);
         String previous = protocol.attachFile(key, fileName);
@@ -130,7 +130,7 @@ class ProtocolServiceImpl implements ProtocolReader, ProtocolWriter {
         List<String> unmet = approvalRequirements(protocolId).stream()
                 .filter(r -> !r.met()).map(Requirement::description).toList();
         if (!unmet.isEmpty()) {
-            throw new BusinessRuleException("Cannot approve yet: " + String.join("; ", unmet));
+            throw new BusinessRuleException("Затвердити поки неможливо: " + String.join("; ", unmet));
         }
         protocol.approve(actorId, clock.instant());
         return toDto(protocol);

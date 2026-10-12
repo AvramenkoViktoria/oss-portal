@@ -134,7 +134,7 @@ class VotingServiceIT {
         VotingDto voting = votings.create(new CreateVotingCmd(protocol.id(), null, "Q"));
 
         assertThatThrownBy(() -> writer.approve(protocol.id(), editor)).isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("Votes are recorded");
+                .hasMessageContaining("внесено голоси");
 
         votings.record(new RecordCmd(voting.id(), choices(VoteChoice.FOR, VoteChoice.FOR, VoteChoice.FOR)));
         assertThat(writer.approve(protocol.id(), editor).status().name()).isEqualTo("APPROVED");

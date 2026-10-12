@@ -21,7 +21,7 @@ class NotMemberPolicy implements AuthorEligibilityPolicy {
     @Override
     public void ensureEligible(Long userId, Long orgId) {
         if (organizations.isMember(userId)) {
-            throw new BusinessRuleException("Members of the SK and the KS cannot submit petitions");
+            throw new BusinessRuleException("Члени СК та КС не можуть подавати петиції");
         }
     }
 }

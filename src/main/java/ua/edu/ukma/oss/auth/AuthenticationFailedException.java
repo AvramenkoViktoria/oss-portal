@@ -6,6 +6,6 @@ package ua.edu.ukma.oss.auth;
 public class AuthenticationFailedException extends RuntimeException {
 
     public AuthenticationFailedException() {
-        super("Invalid email or password");
+        super("Неправильна електронна пошта або пароль");
     }
 }

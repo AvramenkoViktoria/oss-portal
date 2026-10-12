@@ -39,9 +39,9 @@ class MeetingServiceImpl implements MeetingService {
 
     @Override
     public MeetingDto schedule(ScheduleCmd cmd) {
-        requireText(cmd.title(), "Title");
+        requireText(cmd.title(), "Назва");
         if (cmd.scheduledAt() == null) {
-            throw new BusinessRuleException("Meeting time is required");
+            throw new BusinessRuleException("Вкажіть дату й час засідання");
         }
         Meeting meeting = meetings.save(new Meeting(cmd.orgId(), cmd.title().trim(), cmd.scheduledAt(),
                 blankToNull(cmd.streamUrl())));
@@ -69,7 +69,7 @@ class MeetingServiceImpl implements MeetingService {
 
     @Override
     public MeetingDto reschedule(Long meetingId, String title, Instant scheduledAt, String streamUrl) {
-        requireText(title, "Title");
+        requireText(title, "Назва");
         Meeting meeting = find(meetingId);
         meeting.reschedule(title.trim(), scheduledAt, blankToNull(streamUrl));
         return mapper.toDto(meeting, agenda.findByMeetingIdOrderByPosition(meetingId));
@@ -77,8 +77,8 @@ class MeetingServiceImpl implements MeetingService {
 
     @Override
     public AgendaItemDto addAgendaItem(Long meetingId, String title) {
-        requireText(title, "Agenda item title");
-        find(meetingId).ensurePlanned("given new agenda items");
+        requireText(title, "Назва пункту порядку денного");
+        find(meetingId).ensurePlanned();
         int position = agenda.countByMeetingId(meetingId) + 1;
         return mapper.toDto(agenda.save(new AgendaItem(meetingId, position, title.trim())));
     }
@@ -105,7 +105,7 @@ class MeetingServiceImpl implements MeetingService {
 
     private static void requireText(String value, String field) {
         if (value == null || value.isBlank()) {
-            throw new BusinessRuleException(field + " is required");
+            throw new BusinessRuleException(field + " — обов’язкове поле");
         }
     }
 

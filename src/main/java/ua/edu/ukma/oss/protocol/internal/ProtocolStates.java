@@ -26,7 +26,7 @@ final class ProtocolStates {
 
         @Override
         public ProtocolState publish() {
-            throw new BusinessRuleException("A draft must be approved before it can be published");
+            throw new BusinessRuleException("Спершу протокол потрібно затвердити");
         }
     };
 
@@ -43,7 +43,7 @@ final class ProtocolStates {
 
         @Override
         public ProtocolState approve() {
-            throw new BusinessRuleException("The protocol is already approved");
+            throw new BusinessRuleException("Протокол уже затверджено");
         }
 
         @Override
@@ -65,12 +65,12 @@ final class ProtocolStates {
 
         @Override
         public ProtocolState approve() {
-            throw new BusinessRuleException("The protocol is already published");
+            throw new BusinessRuleException("Протокол уже опубліковано");
         }
 
         @Override
         public ProtocolState publish() {
-            throw new BusinessRuleException("The protocol is already published");
+            throw new BusinessRuleException("Протокол уже опубліковано");
         }
     };
 

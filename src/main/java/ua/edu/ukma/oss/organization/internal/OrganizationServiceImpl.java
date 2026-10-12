@@ -83,12 +83,12 @@ class OrganizationServiceImpl implements OrganizationService {
     @Override
     public MembershipDto addMember(AddMemberCmd cmd) {
         if (cmd.termEnd() != null && cmd.termEnd().isBefore(cmd.termStart())) {
-            throw new BusinessRuleException("Term end must not precede term start");
+            throw new BusinessRuleException("Кінець каденції не може бути раніше за її початок");
         }
         orgs.findById(cmd.orgId()).orElseThrow(() -> new NotFoundException("Organization", cmd.orgId()));
         LocalDate end = cmd.termEnd() == null ? FAR_FUTURE : cmd.termEnd();
         if (members.existsOverlapping(cmd.userId(), cmd.orgId(), cmd.termStart(), end)) {
-            throw new BusinessRuleException("The person already has a term in this body that overlaps the given period");
+            throw new BusinessRuleException("У цього члена вже є каденція в цьому органі, що перетинається з указаним періодом");
         }
         return toDto(members.save(new Membership(cmd.userId(), cmd.orgId(), cmd.faculty(), cmd.position(),
                 cmd.termStart(), cmd.termEnd())));
@@ -98,7 +98,7 @@ class OrganizationServiceImpl implements OrganizationService {
     public MembershipDto endTerm(Long membershipId, LocalDate termEnd) {
         Membership membership = find(membershipId);
         if (termEnd.isBefore(membership.getTermStart())) {
-            throw new BusinessRuleException("Term end must not precede term start");
+            throw new BusinessRuleException("Кінець каденції не може бути раніше за її початок");
         }
         membership.endOn(termEnd);
         return toDto(membership);

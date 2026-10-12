@@ -65,7 +65,7 @@ class NotificationAdminServiceImpl implements NotificationAdminService {
     public void requeue(Long entryId) {
         OutboxEntry entry = outbox.findById(entryId).orElseThrow(() -> new NotFoundException("Outbox entry", entryId));
         if (entry.getStatus() != OutboxStatus.FAILED) {
-            throw new BusinessRuleException("Only failed messages can be requeued");
+            throw new BusinessRuleException("У чергу можна повернути лише повідомлення, які не вдалося надіслати");
         }
         entry.requeue(clock.instant());
     }

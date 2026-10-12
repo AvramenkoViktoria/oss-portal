@@ -45,7 +45,7 @@ class OrganizationServiceImplTest {
 
         assertThatThrownBy(() -> service.addMember(cmd))
                 .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("overlaps");
+                .hasMessageContaining("перетинається");
     }
 
     @Test

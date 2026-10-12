@@ -102,7 +102,7 @@ class Protocol extends BaseEntity {
      */
     String attachFile(String key, String name) {
         if (!state().editable()) {
-            throw new BusinessRuleException("The document of an approved or published protocol cannot be replaced");
+            throw new BusinessRuleException("Документ затвердженого чи опублікованого протоколу змінити неможливо");
         }
         String previous = this.fileKey;
         this.fileKey = key;
@@ -113,7 +113,7 @@ class Protocol extends BaseEntity {
     void approve(Long actorId, Instant now) {
         ProtocolState next = state().approve();
         if (!hasFile()) {
-            throw new BusinessRuleException("Attach the protocol document before approving");
+            throw new BusinessRuleException("Спершу прикріпіть документ протоколу");
         }
         this.status = next.status();
         this.approvedAt = now;

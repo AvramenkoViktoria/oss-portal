@@ -65,7 +65,7 @@ class Meeting extends BaseEntity {
     }
 
     void reschedule(String title, Instant scheduledAt, String streamUrl) {
-        ensurePlanned("changed");
+        ensurePlanned();
         this.title = title;
         this.scheduledAt = scheduledAt;
         this.streamUrl = streamUrl;
@@ -75,22 +75,22 @@ class Meeting extends BaseEntity {
      * @param now current time; a meeting cannot be held before it starts
      */
     void markHeld(Instant now) {
-        ensurePlanned("marked as held");
+        ensurePlanned();
         if (scheduledAt.isAfter(now)) {
-            throw new BusinessRuleException("The meeting has not started yet");
+            throw new BusinessRuleException("Засідання ще не розпочалося");
         }
         status = MeetingStatus.HELD;
     }
 
     void cancel() {
-        ensurePlanned("cancelled");
+        ensurePlanned();
         status = MeetingStatus.CANCELLED;
     }
 
-    void ensurePlanned(String action) {
+    void ensurePlanned() {
         if (status != MeetingStatus.PLANNED) {
-            throw new BusinessRuleException("A meeting that is " + status.name().toLowerCase()
-                    + " cannot be " + action);
+            throw new BusinessRuleException("Цю дію можна виконати лише із запланованим засіданням, а це — "
+                    + (status == MeetingStatus.HELD ? "проведене" : "скасоване"));
         }
     }
 }

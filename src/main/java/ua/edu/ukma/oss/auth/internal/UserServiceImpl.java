@@ -34,16 +34,16 @@ class UserServiceImpl implements UserService {
     public UserDto register(String email, String password, String fullName) {
         String normalized = JwtAuthService.normalize(email);
         if (normalized.isEmpty() || !normalized.contains("@")) {
-            throw new BusinessRuleException("A valid email is required");
+            throw new BusinessRuleException("Вкажіть коректну електронну пошту");
         }
         if (fullName == null || fullName.isBlank()) {
-            throw new BusinessRuleException("Full name is required");
+            throw new BusinessRuleException("Вкажіть прізвище та ім’я");
         }
         if (password == null || password.length() < MIN_PASSWORD_LENGTH) {
-            throw new BusinessRuleException("Password must be at least " + MIN_PASSWORD_LENGTH + " characters");
+            throw new BusinessRuleException("Пароль має містити щонайменше " + MIN_PASSWORD_LENGTH + " символів");
         }
         if (users.existsByEmail(normalized)) {
-            throw new BusinessRuleException("An account with this email already exists");
+            throw new BusinessRuleException("Обліковий запис із такою поштою вже існує");
         }
         User user = users.save(new User(normalized, encoder.encode(password), fullName.trim()));
         return toDto(user, List.of());
@@ -77,13 +77,13 @@ class UserServiceImpl implements UserService {
     @Override
     public UserDto grant(Long userId, Role role, Long orgId) {
         if (role == Role.STUDENT) {
-            throw new BusinessRuleException("The student role is implicit and cannot be granted");
+            throw new BusinessRuleException("Роль студента надається автоматично");
         }
         if (role.editsOrganizationContent() && orgId == null) {
-            throw new BusinessRuleException("This role must be granted for a specific organization");
+            throw new BusinessRuleException("Цю роль потрібно надавати для конкретного органу");
         }
         if (role == Role.ADMIN && orgId != null) {
-            throw new BusinessRuleException("The admin role is not tied to an organization");
+            throw new BusinessRuleException("Роль адміністратора не прив’язується до органу");
         }
         users.findById(userId).orElseThrow(() -> new NotFoundException("User", userId));
         boolean exists = grants.findByUserId(userId).stream()

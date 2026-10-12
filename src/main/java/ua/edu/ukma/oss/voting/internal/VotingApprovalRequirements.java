@@ -21,6 +21,6 @@ class VotingApprovalRequirements implements ApprovalRequirementProvider {
     public List<Requirement> requirementsFor(Long protocolId) {
         List<Voting> all = votings.findByProtocolIdOrderById(protocolId);
         boolean allRecorded = all.stream().allMatch(v -> v.getResult() != null);
-        return List.of(new Requirement("votings", "Votes are recorded for every voting of the protocol", allRecorded));
+        return List.of(new Requirement("votings", "Для кожного голосування внесено голоси", allRecorded));
     }
 }

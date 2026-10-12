@@ -86,19 +86,19 @@ class Petition extends BaseEntity {
     }
 
     void schedule(Long meetingId, PetitionLink link) {
-        require(PetitionStatus.SUBMITTED, "scheduled");
+        require(PetitionStatus.SUBMITTED);
         this.status = PetitionStatus.SCHEDULED;
         this.meetingId = meetingId;
         this.link = link;
     }
 
     void consider() {
-        require(PetitionStatus.SCHEDULED, "marked as considered");
+        require(PetitionStatus.SCHEDULED);
         this.status = PetitionStatus.CONSIDERED;
     }
 
     void reject(String reason) {
-        require(PetitionStatus.SUBMITTED, "rejected");
+        require(PetitionStatus.SUBMITTED);
         this.status = PetitionStatus.REJECTED;
         this.rejectionReason = reason;
     }
@@ -107,16 +107,25 @@ class Petition extends BaseEntity {
      * Returns a scheduled petition to the queue after its meeting was cancelled.
      */
     void unschedule() {
-        require(PetitionStatus.SCHEDULED, "returned to the queue");
+        require(PetitionStatus.SCHEDULED);
         this.status = PetitionStatus.SUBMITTED;
         this.meetingId = null;
         this.link = null;
     }
 
-    private void require(PetitionStatus expected, String action) {
+    private void require(PetitionStatus expected) {
         if (status != expected) {
-            throw new BusinessRuleException("A petition that is " + status.name().toLowerCase()
-                    + " cannot be " + action);
+            throw new BusinessRuleException("Цю дію не можна виконати для петиції зі статусом «"
+                    + label(status) + "»");
         }
+    }
+
+    private static String label(PetitionStatus status) {
+        return switch (status) {
+            case SUBMITTED -> "подано";
+            case SCHEDULED -> "заплановано до розгляду";
+            case CONSIDERED -> "розглянуто";
+            case REJECTED -> "відхилено";
+        };
     }
 }

@@ -45,14 +45,14 @@ class VotingServiceImpl implements VotingService {
     @Override
     public VotingDto create(CreateVotingCmd cmd) {
         if (cmd.question() == null || cmd.question().isBlank()) {
-            throw new BusinessRuleException("The question is required");
+            throw new BusinessRuleException("Вкажіть питання голосування");
         }
         ProtocolDto protocol = requireDraft(cmd.protocolId());
         if (cmd.agendaItemId() != null) {
             boolean belongs = meetings.get(protocol.meetingId()).agenda().stream()
                     .anyMatch(item -> item.id().equals(cmd.agendaItemId()));
             if (!belongs) {
-                throw new BusinessRuleException("The agenda item does not belong to the meeting of this protocol");
+                throw new BusinessRuleException("Пункт порядку денного не належить засіданню цього протоколу");
             }
         }
         return toDto(votings.save(new Voting(cmd.protocolId(), cmd.agendaItemId(), cmd.question().trim())));
@@ -71,10 +71,10 @@ class VotingServiceImpl implements VotingService {
         List<MembershipDto> body = organizations.members(protocol.orgId());
         Set<Long> memberIds = body.stream().map(MembershipDto::id).collect(Collectors.toSet());
         if (!memberIds.containsAll(cmd.choices().keySet())) {
-            throw new BusinessRuleException("Votes may only be recorded for current members of the body");
+            throw new BusinessRuleException("Голоси можна вносити лише за чинних членів органу");
         }
         if (memberIds.isEmpty()) {
-            throw new BusinessRuleException("The body has no members to vote");
+            throw new BusinessRuleException("В органі немає членів, які могли б голосувати");
         }
 
         Map<Long, VoteRecord> existing = records.findByVotingIdOrderByMembershipId(voting.getId()).stream()
@@ -128,7 +128,7 @@ class VotingServiceImpl implements VotingService {
     private ProtocolDto requireDraft(Long protocolId) {
         ProtocolDto protocol = protocols.get(protocolId);
         if (protocol.status() != ProtocolStatus.DRAFT) {
-            throw new BusinessRuleException("Votings can only be changed while the protocol is a draft");
+            throw new BusinessRuleException("Голосування можна змінювати лише доки протокол є чернеткою");
         }
         return protocol;
     }

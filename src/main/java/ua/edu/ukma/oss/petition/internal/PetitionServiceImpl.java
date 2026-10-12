@@ -43,10 +43,10 @@ class PetitionServiceImpl implements PetitionService {
     @Override
     public PetitionDto submit(SubmitCmd cmd) {
         if (cmd.title() == null || cmd.title().isBlank() || cmd.title().length() > MAX_TITLE_LENGTH) {
-            throw new BusinessRuleException("Title is required and must be at most " + MAX_TITLE_LENGTH + " characters");
+            throw new BusinessRuleException("Заголовок обов’язковий і має містити не більше " + MAX_TITLE_LENGTH + " символів");
         }
         if (cmd.text() == null || cmd.text().isBlank()) {
-            throw new BusinessRuleException("Petition text is required");
+            throw new BusinessRuleException("Вкажіть текст петиції");
         }
         organizations.get(cmd.orgId());
         policy.ensureEligible(cmd.authorId(), cmd.orgId());
@@ -64,14 +64,14 @@ class PetitionServiceImpl implements PetitionService {
         Petition petition = find(petitionId);
         MeetingDto meeting = meetings.get(meetingId);
         if (!meeting.orgId().equals(petition.getOrgId())) {
-            throw new BusinessRuleException("The meeting belongs to another body than the petition");
+            throw new BusinessRuleException("Засідання належить іншому органу, ніж петиція");
         }
         if (meeting.status() != MeetingStatus.PLANNED) {
-            throw new BusinessRuleException("A petition can only be scheduled to a planned meeting");
+            throw new BusinessRuleException("Петицію можна призначити лише на заплановане засідання");
         }
         petition.schedule(meetingId, link);
         if (link == PetitionLink.AGENDA_ITEM) {
-            meetings.addAgendaItem(meetingId, "Petition: " + petition.getTitle());
+            meetings.addAgendaItem(meetingId, "Петиція: " + petition.getTitle());
         }
         return toDto(petition);
     }
@@ -81,11 +81,10 @@ class PetitionServiceImpl implements PetitionService {
                                                String streamUrl) {
         Petition petition = find(petitionId);
         if (petition.getStatus() != PetitionStatus.SUBMITTED) {
-            throw new BusinessRuleException("A petition that is " + petition.getStatus().name().toLowerCase()
-                    + " cannot be scheduled");
+            throw new BusinessRuleException("Призначити розгляд можна лише для щойно поданої петиції");
         }
         MeetingDto meeting = meetings.schedule(new ScheduleCmd(petition.getOrgId(), meetingTitle, scheduledAt, streamUrl));
-        meetings.addAgendaItem(meeting.id(), "Petition: " + petition.getTitle());
+        meetings.addAgendaItem(meeting.id(), "Петиція: " + petition.getTitle());
         petition.schedule(meeting.id(), PetitionLink.SEPARATE_MEETING);
         return toDto(petition);
     }
@@ -93,7 +92,7 @@ class PetitionServiceImpl implements PetitionService {
     @Override
     public PetitionDto reject(Long petitionId, String reason) {
         if (reason == null || reason.isBlank()) {
-            throw new BusinessRuleException("A rejection reason is required");
+            throw new BusinessRuleException("Вкажіть причину відхилення");
         }
         Petition petition = find(petitionId);
         petition.reject(reason.trim());
