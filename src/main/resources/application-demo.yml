@@ -1,0 +1,4 @@
+# Local demo: fills an empty database with sample data on startup.
+oss:
+  notification:
+    poll-interval: 5s
