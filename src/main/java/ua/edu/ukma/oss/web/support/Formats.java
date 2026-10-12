@@ -3,6 +3,7 @@ package ua.edu.ukma.oss.web.support;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -16,12 +17,25 @@ public class Formats {
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("d MMMM yyyy", UK);
     private static final DateTimeFormatter DATE_TIME = DateTimeFormatter.ofPattern("d MMMM yyyy, HH:mm", UK);
     private static final DateTimeFormatter SHORT = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", UK);
+    private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("LLLL yyyy", UK);
+    private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
     private static final DateTimeFormatter INPUT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm");
 
     private final ZoneId zone;
 
     public Formats(ZoneId zone) {
         this.zone = zone;
+    }
+
+    /**
+     * Month name and year, e.g. "жовтень 2026".
+     */
+    public String monthTitle(YearMonth month) {
+        return MONTH.format(month);
+    }
+
+    public String time(Instant instant) {
+        return instant == null ? "" : TIME.format(instant.atZone(zone));
     }
 
     public String date(Instant instant) {
