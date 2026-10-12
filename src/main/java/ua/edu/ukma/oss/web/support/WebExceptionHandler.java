@@ -3,11 +3,13 @@ package ua.edu.ukma.oss.web.support;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ua.edu.ukma.oss.auth.AuthPrincipal;
 import ua.edu.ukma.oss.shared.BusinessRuleException;
 import ua.edu.ukma.oss.shared.NotFoundException;
 
@@ -18,6 +20,12 @@ import ua.edu.ukma.oss.shared.NotFoundException;
 @ControllerAdvice
 class WebExceptionHandler {
 
+    private final PageContextAdvice pageContexts;
+
+    WebExceptionHandler(PageContextAdvice pageContexts) {
+        this.pageContexts = pageContexts;
+    }
+
     @ExceptionHandler(BusinessRuleException.class)
     String onRuleViolation(BusinessRuleException e, HttpServletRequest request, RedirectAttributes redirect) {
         redirect.addFlashAttribute("error", e.getMessage());
@@ -27,7 +35,8 @@ class WebExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    String onNotFound(Model model) {
+    String onNotFound(Model model, HttpServletRequest request, @AuthenticationPrincipal AuthPrincipal user) {
+        model.addAttribute("ctx", pageContexts.pageContext(user, request));
         model.addAttribute("code", 404);
         model.addAttribute("message", "Сторінку не знайдено");
         return "pages/error";
@@ -35,7 +44,8 @@ class WebExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    String onDenied(Model model) {
+    String onDenied(Model model, HttpServletRequest request, @AuthenticationPrincipal AuthPrincipal user) {
+        model.addAttribute("ctx", pageContexts.pageContext(user, request));
         model.addAttribute("code", 403);
         model.addAttribute("message", "Недостатньо прав для цієї дії");
         return "pages/error";
