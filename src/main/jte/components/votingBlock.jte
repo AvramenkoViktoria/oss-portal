@@ -27,7 +27,7 @@
             @endfor
             <span class="muted">Склад: ${v.bodySize()}</span>
         </div>
-        <div class="seats" style="grid-template-columns: repeat(${v.grid().columns()}, minmax(0, 1fr))">
+        <div class="seats" style="grid-template-columns: repeat(${v.grid().columns()}, minmax(0, 1fr)); max-width: ${v.grid().columns() * 84}px">
             @for(var cell : v.grid().cells())
                 <div class="seat c-${cell.choice().name()}" title="${v.seatNames().getOrDefault(cell.membershipId(), "—")} — ${Labels.choice(cell.choice())}">${Labels.initials(v.seatNames().get(cell.membershipId()))}</div>
             @endfor
