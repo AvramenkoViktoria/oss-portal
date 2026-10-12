@@ -1,3 +1,8 @@
 oss:
   storage:
     path: target/test-storage
+  notification:
+    poll-interval: 1h
+    backoff: 0s
+    max-attempts: 3
+    immediate-retries: 2

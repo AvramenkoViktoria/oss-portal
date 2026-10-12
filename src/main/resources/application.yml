@@ -36,3 +36,9 @@ oss:
     password: ${ADMIN_PASSWORD:}
   storage:
     path: ${STORAGE_PATH:storage}
+  notification:
+    max-attempts: 5
+    immediate-retries: 2
+    backoff: 30s
+    poll-interval: 10s
+    public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
