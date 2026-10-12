@@ -26,3 +26,11 @@ gg:
   jte:
     development-mode: false
     use-precompiled-templates: true
+
+oss:
+  security:
+    jwt-secret: ${JWT_SECRET:dev-only-secret-change-me-in-production-0123456789}
+    token-ttl: 8h
+  bootstrap-admin:
+    email: ${ADMIN_EMAIL:}
+    password: ${ADMIN_PASSWORD:}
