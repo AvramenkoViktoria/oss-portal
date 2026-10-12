@@ -64,7 +64,7 @@ class AnnouncementsIT {
     }
 
     @Test
-    void publishingProtocolQueuesLinkToIt() {
+    void publishingProtocolQueuesLinkToTheMeeting() {
         String title = "Protocol-" + UUID.randomUUID();
         Long sk = organizations.getByCode(OrgCode.SK).id();
         Long actor = users.register("p-" + UUID.randomUUID() + "@ukma.edu.ua", "s3cret-pass", "Editor").id();
@@ -77,6 +77,6 @@ class AnnouncementsIT {
         writer.publish(protocol.id(), actor);
 
         assertThat(admin.recent(100)).anyMatch(e -> e.payload().contains(title)
-                && e.payload().contains("/protocols/" + protocol.id()) && e.orgId().equals(sk));
+                && e.payload().contains("/meetings/" + meeting.id()) && e.orgId().equals(sk));
     }
 }

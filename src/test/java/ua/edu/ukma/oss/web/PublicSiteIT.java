@@ -84,6 +84,8 @@ class PublicSiteIT {
                 .andReturn().getResponse().getContentAsString();
         assertThat(page).contains(title).contains("Опубліковано");
         mvc.perform(get("/protocols/" + protocol.id() + "/file")).andExpect(status().isOk());
-        assertThat(mvc.perform(get("/orgs/sk")).andReturn().getResponse().getContentAsString()).contains(title);
+        String meetingPage = mvc.perform(get("/meetings/" + protocol.meetingId())).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(meetingPage).contains("/protocols/" + protocol.id());
     }
 }

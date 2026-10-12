@@ -66,7 +66,7 @@ class NotificationServiceImpl implements NotificationService {
     void onProtocolPublished(ProtocolPublishedEvent event) {
         String title = meetings.get(event.meetingId()).title();
         String text = "📄 Опубліковано протокол засідання «" + title + "»\n"
-                + properties.publicBaseUrl() + "/protocols/" + event.protocolId();
+                + properties.publicBaseUrl() + "/meetings/" + event.meetingId();
         notify(new NotificationMessage(event.orgId(), text));
     }
 

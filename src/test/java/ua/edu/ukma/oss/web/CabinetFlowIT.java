@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -113,6 +114,28 @@ class CabinetFlowIT {
     }
 
     @Test
+    void thereIsNoStandaloneProtocolsSectionInTheCabinet() throws Exception {
+        mvc.perform(get("/cabinet/sk/protocols").cookie(editor)).andExpect(status().isNotFound());
+        String page = mvc.perform(get("/cabinet/sk").cookie(editor)).andReturn().getResponse().getContentAsString();
+        assertThat(page).doesNotContain("/cabinet/sk/protocols\"");
+    }
+
+    @Test
+    void cabinetMeetingsAreShownAsAMonthCalendar() throws Exception {
+        String title = "Calendar-" + UUID.randomUUID();
+        meetings.schedule(new ScheduleCmd(sk, title, Instant.now().plus(1, ChronoUnit.HOURS), null));
+
+        String current = mvc.perform(get("/cabinet/sk/meetings").cookie(editor)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(current).contains("cal-grid").contains("Пн");
+
+        String far = mvc.perform(get("/cabinet/sk/meetings").param("month", "2031-02").cookie(editor))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(far).contains("лютий 2031").doesNotContain(title);
+        mvc.perform(get("/cabinet/sk/meetings").param("month", "garbage").cookie(editor)).andExpect(status().isOk());
+    }
+
+    @Test
     void editorCannotReachMeetingOfAnotherBodyByGuessingItsId() throws Exception {
         MeetingDto other = meetings.schedule(new ScheduleCmd(ks, "KS session", Instant.now().plus(1, ChronoUnit.DAYS), null));
 
@@ -133,11 +156,15 @@ class CabinetFlowIT {
         mvc.perform(post(meetingUrl + "/agenda").with(csrf()).cookie(editor).param("title", "Budget"))
                 .andExpect(status().is3xxRedirection());
 
-        // 2. Hold it: a draft protocol appears and the user lands on its workspace.
-        MvcResult held = mvc.perform(post(meetingUrl + "/held").with(csrf()).cookie(editor))
-                .andExpect(redirectedUrlPattern("/cabinet/sk/protocols/*")).andReturn();
-        String protocolUrl = held.getResponse().getRedirectedUrl();
-        Long protocolId = Long.valueOf(protocolUrl.substring(protocolUrl.lastIndexOf('/') + 1));
+        // 2. Hold it: a draft protocol appears and is opened from the meeting page.
+        mvc.perform(post(meetingUrl + "/held").with(csrf()).cookie(editor))
+                .andExpect(redirectedUrl(meetingUrl));
+        Long meetingId = Long.valueOf(meetingUrl.substring(meetingUrl.lastIndexOf('/') + 1));
+        Long protocolId = protocols.byMeeting(meetingId).orElseThrow().id();
+        String meetingPage = mvc.perform(get(meetingUrl).cookie(editor)).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(meetingPage).contains("/cabinet/sk/protocols/" + protocolId);
+        String protocolUrl = "/cabinet/sk/protocols/" + protocolId;
         assertThat(protocols.get(protocolId).status()).isEqualTo(ProtocolStatus.DRAFT);
 
         // 3. Approval is refused while the checklist is incomplete.
