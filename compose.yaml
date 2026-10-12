@@ -1,0 +1,15 @@
+# Local infrastructure for development; the application itself runs from the IDE or `mvn spring-boot:run`.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: oss
+      POSTGRES_USER: oss
+      POSTGRES_PASSWORD: oss
+    ports:
+      - "5433:5432"
+    volumes:
+      - oss-pgdata:/var/lib/postgresql/data
+
+volumes:
+  oss-pgdata:
