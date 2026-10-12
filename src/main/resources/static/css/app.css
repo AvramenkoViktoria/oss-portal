@@ -201,3 +201,22 @@ table.data th { font-size: .78rem; text-transform: uppercase; letter-spacing: .0
 .tabs a { padding: .5rem .9rem; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -2px; font-weight: 600; }
 .tabs a.active { color: var(--navy); border-color: var(--navy); }
 .tabs a:hover { text-decoration: none; color: var(--navy); }
+
+/* Month calendar */
+.cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+.cal-head h3 { margin: 0; text-transform: capitalize; }
+.cal-scroll { overflow-x: auto; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); min-width: 770px; }
+.cal-dow { padding: .4rem .5rem; font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); background: #f7f9fc; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.cal-day { min-height: 92px; padding: .3rem; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: #fff; }
+.cal-day.out { background: #f6f8fb; }
+.cal-day.out .cal-num { color: #aab4c3; }
+.cal-day.today { background: #fffaf0; }
+.cal-day.today .cal-num { background: var(--navy); color: #fff; border-radius: 999px; }
+.cal-num { display: inline-block; min-width: 1.5rem; padding: 0 .35rem; text-align: center; font-size: .85rem; font-weight: 600; color: var(--ink); margin-bottom: .2rem; }
+.cal-event { display: block; margin-top: .2rem; padding: .15rem .4rem; border-radius: 5px; font-size: .78rem; line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-left: 3px solid; }
+.cal-event:hover { text-decoration: none; filter: brightness(.96); }
+.cal-event.approved { background: var(--approved-bg); color: var(--approved); border-color: var(--approved); }
+.cal-event.published { background: var(--published-bg); color: var(--published); border-color: var(--published); }
+.cal-event.danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
+.cal-time { font-weight: 700; }
