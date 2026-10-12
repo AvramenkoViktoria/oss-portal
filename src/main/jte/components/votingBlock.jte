@@ -14,7 +14,7 @@
         <p class="muted small" style="margin:.2rem 0 0">Пункт порядку денного: ${v.agendaItemTitle()}</p>
     @endif
     @if(v.voting().isRecorded())
-        <div class="bar" role="img" aria-label="Підсумок голосування">
+        <div class="vbar" role="img" aria-label="Підсумок голосування">
             @for(var s : v.segments())
                 @if(s.count() > 0)
                     <span class="c-${s.choice().name()}" style="width:${s.percent()}%" title="${Labels.choice(s.choice())}: ${s.count()}"></span>
