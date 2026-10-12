@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.LocalDate;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
+import ua.edu.ukma.oss.auth.UserService;
 import ua.edu.ukma.oss.shared.BusinessRuleException;
 import ua.edu.ukma.oss.support.IntegrationTest;
 
@@ -16,6 +18,12 @@ class OrganizationServiceIT {
 
     @Autowired
     OrganizationService organizations;
+    @Autowired
+    UserService users;
+
+    private Long newUser() {
+        return users.register("member-" + UUID.randomUUID() + "@ukma.edu.ua", "s3cret-pass", "Member").id();
+    }
 
     @Test
     void bothBodiesAreSeededWithTheirMessengers() {
@@ -30,34 +38,38 @@ class OrganizationServiceIT {
     void currentMemberIsVisibleAndExpiredOneIsNot() {
         Long sk = organizations.getByCode(OrgCode.SK).id();
         LocalDate today = LocalDate.now();
-        organizations.addMember(new AddMemberCmd(101L, sk, "FI", "Chair", today.minusMonths(1), null));
-        organizations.addMember(new AddMemberCmd(102L, sk, "FI", "Member", today.minusYears(2), today.minusYears(1)));
+        Long current = newUser();
+        Long expired = newUser();
+        organizations.addMember(new AddMemberCmd(current, sk, "FI", "Chair", today.minusMonths(1), null));
+        organizations.addMember(new AddMemberCmd(expired, sk, "FI", "Member", today.minusYears(2), today.minusYears(1)));
 
-        assertThat(organizations.members(sk)).extracting(MembershipDto::userId).containsExactly(101L);
-        assertThat(organizations.history(sk)).extracting(MembershipDto::userId).contains(101L, 102L);
-        assertThat(organizations.isMember(101L)).isTrue();
-        assertThat(organizations.isMember(102L)).isFalse();
+        assertThat(organizations.members(sk)).extracting(MembershipDto::userId).contains(current).doesNotContain(expired);
+        assertThat(organizations.history(sk)).extracting(MembershipDto::userId).contains(current, expired);
+        assertThat(organizations.isMember(current)).isTrue();
+        assertThat(organizations.isMember(expired)).isFalse();
     }
 
     @Test
     void endingATermDeactivatesMembership() {
         Long ks = organizations.getByCode(OrgCode.KS).id();
         LocalDate today = LocalDate.now();
-        MembershipDto m = organizations.addMember(new AddMemberCmd(103L, ks, "FEN", "Delegate", today.minusDays(5), null));
+        Long user = newUser();
+        MembershipDto m = organizations.addMember(new AddMemberCmd(user, ks, "FEN", "Delegate", today.minusDays(5), null));
 
         organizations.endTerm(m.id(), today.minusDays(1));
 
-        assertThat(organizations.isMember(103L, ks)).isFalse();
+        assertThat(organizations.isMember(user, ks)).isFalse();
     }
 
     @Test
     void overlappingTermIsRejected() {
         Long ks = organizations.getByCode(OrgCode.KS).id();
         LocalDate today = LocalDate.now();
-        organizations.addMember(new AddMemberCmd(104L, ks, "FEN", "Delegate", today.minusDays(5), null));
+        Long user = newUser();
+        organizations.addMember(new AddMemberCmd(user, ks, "FEN", "Delegate", today.minusDays(5), null));
 
         assertThatThrownBy(() -> organizations.addMember(
-                new AddMemberCmd(104L, ks, "FEN", "Delegate", today, today.plusMonths(3))))
+                new AddMemberCmd(user, ks, "FEN", "Delegate", today, today.plusMonths(3))))
                 .isInstanceOf(BusinessRuleException.class);
     }
 
