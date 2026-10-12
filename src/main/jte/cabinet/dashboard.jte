@@ -19,7 +19,7 @@
     <div class="grid three">
         <div class="card"><div class="stat">${toHold.size()}</div><div class="muted">засідань чекають на позначку «проведено»</div></div>
         <div class="card"><div class="stat">${queue.size()}</div><div class="muted">петицій у черзі</div></div>
-        <div class="card"><div class="stat">${inWork.size()}</div><div class="muted">протоколів у роботі</div></div>
+        <div class="card"><div class="stat">${inWork.size()}</div><div class="muted">засідань із протоколом у роботі</div></div>
     </div>
 
     <div class="grid two section">
@@ -40,11 +40,11 @@
                 </ul>
             @endif
             @if(!inWork.isEmpty())
-                <h3>Протоколи в роботі</h3>
+                <h3>Протокол потребує уваги</h3>
                 <ul class="list">
                     @for(var e : inWork)
                         <li class="row between">
-                            <span><a href="/cabinet/${code}/protocols/${e.protocol().id()}">${e.meeting().title()}</a></span>
+                            <span><a href="/cabinet/${code}/meetings/${e.meeting().id()}">${e.meeting().title()}</a></span>
                             @template.components.chip(css = Labels.protocolCss(e.protocol().status()), text = Labels.protocolStatus(e.protocol().status()))
                         </li>
                     @endfor

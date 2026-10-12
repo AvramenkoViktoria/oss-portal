@@ -56,28 +56,6 @@ class CabinetProtocolController {
         this.meetings = meetings;
     }
 
-    @GetMapping("/cabinet/{code}/protocols")
-    String board(@PathVariable String code, @AuthenticationPrincipal AuthPrincipal user, Model model) {
-        OrganizationDto org = access.requireEditor(user, code);
-        Map<ProtocolStatus, List<ProtocolEntry>> columns = new EnumMap<>(ProtocolStatus.class);
-        Map<Long, Long> unmet = new HashMap<>();
-        for (ProtocolStatus status : ProtocolStatus.values()) {
-            columns.put(status, List.of());
-        }
-        for (ProtocolDto p : reader.all(org.id())) {
-            List<ProtocolEntry> column = new java.util.ArrayList<>(columns.get(p.status()));
-            column.add(new ProtocolEntry(p, meetings.get(p.meetingId())));
-            columns.put(p.status(), column);
-            if (p.status() == ProtocolStatus.DRAFT) {
-                unmet.put(p.id(), reader.approvalRequirements(p.id()).stream().filter(r -> !r.met()).count());
-            }
-        }
-        model.addAttribute("org", org);
-        model.addAttribute("columns", columns);
-        model.addAttribute("unmet", unmet);
-        return "cabinet/protocols";
-    }
-
     @GetMapping("/cabinet/{code}/protocols/{id}")
     String workspace(@PathVariable String code, @PathVariable Long id, @AuthenticationPrincipal AuthPrincipal user,
                      Model model) {

@@ -7,5 +7,4 @@
     <a href="/cabinet/${code}" class="${active.equals("overview") ? "active" : ""}">Огляд</a>
     <a href="/cabinet/${code}/meetings" class="${active.equals("meetings") ? "active" : ""}">Засідання</a>
     <a href="/cabinet/${code}/petitions" class="${active.equals("petitions") ? "active" : ""}">Петиції</a>
-    <a href="/cabinet/${code}/protocols" class="${active.equals("protocols") ? "active" : ""}">Протоколи</a>
 </nav>

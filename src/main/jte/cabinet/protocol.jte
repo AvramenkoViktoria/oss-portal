@@ -15,7 +15,7 @@
 !{var protocol = page.protocol();}
 !{String base = "/cabinet/" + code + "/protocols/" + protocol.id();}
 @template.layout.page(ctx = ctx, title = "Протокол: " + page.meeting().title(), section = "cabinet-" + code, content = @`
-    <div class="breadcrumbs"><a href="/cabinet/${code}/protocols">Протоколи ${org.code().name()}</a> / ${page.meeting().title()}</div>
+    <div class="breadcrumbs"><a href="/cabinet/${code}/meetings">Засідання ${org.code().name()}</a> / <a href="/cabinet/${code}/meetings/${page.meeting().id()}">${page.meeting().title()}</a> / Протокол</div>
     <div class="page-head">
         <div>
             <h1>Протокол засідання «${page.meeting().title()}»</h1>

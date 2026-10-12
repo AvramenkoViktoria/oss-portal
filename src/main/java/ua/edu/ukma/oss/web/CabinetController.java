@@ -27,6 +27,7 @@ import ua.edu.ukma.oss.petition.PetitionStatus;
 import ua.edu.ukma.oss.protocol.ProtocolDto;
 import ua.edu.ukma.oss.protocol.ProtocolReader;
 import ua.edu.ukma.oss.protocol.ProtocolStatus;
+import ua.edu.ukma.oss.web.view.CalendarView;
 import ua.edu.ukma.oss.web.view.ProtocolEntry;
 
 /**
@@ -42,10 +43,11 @@ class CabinetController {
     private final ProtocolReader protocols;
     private final OrganizationService organizations;
     private final UserService users;
+    private final SiteViews views;
     private final Clock clock;
 
     CabinetController(WebAccess access, CabinetSupport support, MeetingService meetings, PetitionService petitions,
-                      ProtocolReader protocols, OrganizationService organizations, UserService users, Clock clock) {
+                      ProtocolReader protocols, OrganizationService organizations, UserService users, SiteViews views, Clock clock) {
         this.access = access;
         this.support = support;
         this.meetings = meetings;
@@ -53,6 +55,7 @@ class CabinetController {
         this.protocols = protocols;
         this.organizations = organizations;
         this.users = users;
+        this.views = views;
         this.clock = clock;
     }
 
@@ -85,13 +88,12 @@ class CabinetController {
     }
 
     @GetMapping("/cabinet/{code}/meetings")
-    String meetingList(@PathVariable String code, @AuthenticationPrincipal AuthPrincipal user, Model model) {
+    String meetingList(@PathVariable String code, @RequestParam(required = false) String month,
+                       @AuthenticationPrincipal AuthPrincipal user, Model model) {
         OrganizationDto org = access.requireEditor(user, code);
-        Map<Long, ProtocolDto> byMeeting = new java.util.HashMap<>();
-        protocols.all(org.id()).forEach(p -> byMeeting.put(p.meetingId(), p));
         model.addAttribute("org", org);
-        model.addAttribute("meetings", meetings.byOrg(org.id()));
-        model.addAttribute("protocols", byMeeting);
+        model.addAttribute("calendar", views.calendar(CalendarView.parseMonth(month, views.currentMonth()),
+                meetings.byOrg(org.id())));
         return "cabinet/meetings";
     }
 
@@ -142,9 +144,8 @@ class CabinetController {
                     RedirectAttributes redirect) {
         support.meetingOf(access.requireEditor(user, code), id);
         meetings.markHeld(id);
-        ProtocolDto draft = protocols.byMeeting(id).orElseThrow();
-        redirect.addFlashAttribute("success", "Засідання проведено. Створено чернетку протоколу — додайте документ і голосування.");
-        return "redirect:/cabinet/" + code + "/protocols/" + draft.id();
+        redirect.addFlashAttribute("success", "Засідання проведено. Створено чернетку протоколу — відкрийте його нижче.");
+        return "redirect:/cabinet/" + code + "/meetings/" + id;
     }
 
     @PostMapping("/cabinet/{code}/meetings/{id}/cancel")

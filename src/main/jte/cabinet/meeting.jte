@@ -84,14 +84,18 @@
                         <button class="btn danger" type="submit">Скасувати засідання</button>
                     </form>
                 @elseif(meeting.status() == MeetingStatus.HELD)
-                    <p>Засідання відбулося.</p>
-                    @if(protocol != null)
-                        <a class="btn" href="/cabinet/${code}/protocols/${protocol.id()}">До протоколу</a>
-                    @endif
+                    <p style="margin:0">Засідання відбулося.</p>
                 @else
                     <p class="muted">Засідання скасовано; прив’язані петиції повернулися в чергу.</p>
                 @endif
             </section>
+            @if(protocol != null)
+                <section class="card">
+                    <h3>Протокол</h3>
+                    <p>@template.components.chip(css = Labels.protocolCss(protocol.status()), text = Labels.protocolStatus(protocol.status()))</p>
+                    <a class="btn" href="/cabinet/${code}/protocols/${protocol.id()}">Відкрити протокол</a>
+                </section>
+            @endif
             @if(!petitions.isEmpty())
                 <section class="card">
                     <h3>Петиції</h3>
