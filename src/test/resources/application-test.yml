@@ -1,0 +1,3 @@
+oss:
+  storage:
+    path: target/test-storage
