@@ -1,5 +1,5 @@
 # Runs the published image next to PostgreSQL.
-# Usage: IMAGE=ghcr.io/<owner>/oss-portal:latest JWT_SECRET=... ADMIN_EMAIL=... ADMIN_PASSWORD=... docker compose up -d
+# Set SPRING_PROFILES_ACTIVE=demo to load sample data. Usage: IMAGE=ghcr.io/<owner>/oss-portal:latest JWT_SECRET=... ADMIN_EMAIL=... ADMIN_PASSWORD=... docker compose up -d
 services:
   app:
     image: ${IMAGE:?set IMAGE to the published image}
@@ -13,6 +13,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET to a random string of at least 32 bytes}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
     ports:
       - "${HTTP_PORT:-8080}:8080"
