@@ -15,6 +15,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 import ua.edu.ukma.oss.auth.Role;
+import ua.edu.ukma.oss.auth.UserDto;
 import ua.edu.ukma.oss.auth.UserService;
 import ua.edu.ukma.oss.meeting.MeetingDto;
 import ua.edu.ukma.oss.meeting.MeetingService;
@@ -48,6 +49,7 @@ class DemoDataLoader implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DemoDataLoader.class);
     private static final String PASSWORD = "demo12345";
     private static final String ADMIN_EMAIL = "admin@ukma.edu.ua";
+    private static final String MARKER_EMAIL = "sk.1@ukma.edu.ua";
 
     private final UserService users;
     private final OrganizationService organizations;
@@ -71,11 +73,16 @@ class DemoDataLoader implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        if (users.all().stream().anyMatch(u -> u.email().equals(ADMIN_EMAIL))) {
+        // The marker is a demo-only account: the admin may already exist through the first-admin bootstrap.
+        if (users.all().stream().anyMatch(u -> u.email().equals(MARKER_EMAIL))) {
             return;
         }
-        Long adminId = users.register(ADMIN_EMAIL, PASSWORD, "Адміністратор порталу").id();
-        users.grant(adminId, Role.ADMIN, null);
+        Long adminId = users.all().stream().filter(u -> u.email().equals(ADMIN_EMAIL)).findFirst()
+                .map(UserDto::id).orElseGet(() -> {
+                    Long id = users.register(ADMIN_EMAIL, PASSWORD, "Адміністратор порталу").id();
+                    users.grant(id, Role.ADMIN, null);
+                    return id;
+                });
 
         OrganizationDto sk = organizations.getByCode(OrgCode.SK);
         OrganizationDto ks = organizations.getByCode(OrgCode.KS);
