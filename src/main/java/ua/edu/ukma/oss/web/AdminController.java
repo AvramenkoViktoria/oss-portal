@@ -46,28 +46,26 @@ class AdminController {
     String users(Model model) {
         model.addAttribute("users", users.all());
         model.addAttribute("orgs", organizations.all());
-        model.addAttribute("roles", List.of(Role.SK_MEMBER, Role.KS_DELEGATE, Role.ADMIN));
         return "admin/users";
     }
 
-    @PostMapping("/admin/users/{id}/grant")
-    String grant(@PathVariable Long id, @RequestParam Role role, @RequestParam(required = false) Long orgId,
-                 RedirectAttributes redirect) {
-        users.grant(id, role, role == Role.ADMIN ? null : orgId);
-        redirect.addFlashAttribute("success", "Роль надано");
-        return "redirect:/admin";
-    }
-
-    @PostMapping("/admin/grants/{grantId}/revoke")
-    String revoke(@PathVariable Long grantId, @AuthenticationPrincipal AuthPrincipal admin,
-                  RedirectAttributes redirect) {
-        boolean ownAdminRole = users.get(admin.userId()).grants().stream()
-                .anyMatch(g -> g.id().equals(grantId) && g.role() == Role.ADMIN);
-        if (ownAdminRole) {
-            throw new BusinessRuleException("Адміністратор не може відкликати власну роль адміністратора");
+    /**
+     * Editor roles follow the seat and are managed on the composition pages; this page only makes administrators.
+     */
+    @PostMapping("/admin/users/{id}/admin")
+    String setAdmin(@PathVariable Long id, @RequestParam boolean admin, @AuthenticationPrincipal AuthPrincipal self,
+                    RedirectAttributes redirect) {
+        if (admin) {
+            users.grant(id, Role.ADMIN, null);
+            redirect.addFlashAttribute("success", "Роль адміністратора надано");
+            return "redirect:/admin";
         }
-        users.revoke(grantId);
-        redirect.addFlashAttribute("success", "Роль відкликано");
+        if (id.equals(self.userId())) {
+            throw new BusinessRuleException("Адміністратор не може забрати в себе роль адміністратора");
+        }
+        users.get(id).grants().stream().filter(g -> g.role() == Role.ADMIN)
+                .forEach(g -> users.revoke(g.id()));
+        redirect.addFlashAttribute("success", "Роль адміністратора забрано");
         return "redirect:/admin";
     }
 

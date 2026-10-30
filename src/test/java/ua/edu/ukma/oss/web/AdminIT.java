@@ -110,25 +110,32 @@ class AdminIT {
     }
 
     @Test
-    void administratorGrantsAndRevokesRoleThroughTheForm() throws Exception {
+    void administratorMakesAndUnmakesAnotherAdministrator() throws Exception {
         Long id = users.register("r-" + UUID.randomUUID() + "@ukma.edu.ua", "s3cret-pass", "Roleless").id();
 
-        mvc.perform(post("/admin/users/" + id + "/grant").with(csrf()).cookie(admin)
-                        .param("role", "KS_DELEGATE").param("orgId", ks.toString()))
+        mvc.perform(post("/admin/users/" + id + "/admin").with(csrf()).cookie(admin).param("admin", "true"))
                 .andExpect(status().is3xxRedirection());
-        List<Long> grantIds = users.get(id).grants().stream().map(g -> g.id()).toList();
-        assertThat(grantIds).hasSize(1);
+        assertThat(users.get(id).grants()).extracting(g -> g.role()).containsExactly(Role.ADMIN);
 
-        mvc.perform(post("/admin/grants/" + grantIds.getFirst() + "/revoke").with(csrf()).cookie(admin))
+        mvc.perform(post("/admin/users/" + id + "/admin").with(csrf()).cookie(admin).param("admin", "false"))
                 .andExpect(status().is3xxRedirection());
         assertThat(users.get(id).grants()).isEmpty();
     }
 
     @Test
-    void administratorCannotRevokeOwnAdministratorRole() throws Exception {
-        Long grantId = users.get(adminId).grants().getFirst().id();
+    void editorRolesCannotBeGrantedOrRevokedOutsideTheCompositionPages() throws Exception {
+        Long id = users.register("e-" + UUID.randomUUID() + "@ukma.edu.ua", "s3cret-pass", "Member").id();
 
-        mvc.perform(post("/admin/grants/" + grantId + "/revoke").with(csrf()).cookie(admin)
+        mvc.perform(post("/admin/users/" + id + "/grant").with(csrf()).cookie(admin)
+                        .param("role", "KS_DELEGATE").param("orgId", ks.toString()))
+                .andExpect(status().is4xxClientError());
+        mvc.perform(post("/admin/grants/1/revoke").with(csrf()).cookie(admin)).andExpect(status().is4xxClientError());
+        assertThat(users.get(id).grants()).isEmpty();
+    }
+
+    @Test
+    void administratorCannotRemoveOwnAdministratorRole() throws Exception {
+        mvc.perform(post("/admin/users/" + adminId + "/admin").with(csrf()).cookie(admin).param("admin", "false")
                         .header("Referer", "http://localhost/admin"))
                 .andExpect(flash().attributeExists("error"));
 

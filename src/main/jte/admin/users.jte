@@ -6,12 +6,11 @@
 @param PageContext ctx
 @param List<UserDto> users
 @param List<OrganizationDto> orgs
-@param List<Role> roles
 @template.layout.page(ctx = ctx, title = "Користувачі", section = "admin", content = @`
     @template.components.adminHead(active = "users")
     <div class="card table-wrap">
         <table class="data">
-            <thead><tr><th>Користувач</th><th>Ролі</th><th>Надати роль</th><th></th></tr></thead>
+            <thead><tr><th>Користувач</th><th>Ролі</th><th></th></tr></thead>
             <tbody>
             @for(var u : users)
                 <tr>
@@ -23,28 +22,18 @@
                     <td>
                         <span class="chip neutral">Студент</span>
                         @for(var g : u.grants())
-                            <form class="inline-form" method="post" action="/admin/grants/${g.id()}/revoke">
-                                <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
-                                <span class="chip approved">${g.role().name()}@if(g.orgId() != null) · ${orgs.stream().filter(o -> o.id().equals(g.orgId())).findFirst().map(o -> o.code().name()).orElse("")}@endif
-                                    @if(!(g.role() == Role.ADMIN && u.id().equals(ctx.user().userId())))
-                                        <button type="submit" title="Відкликати" style="border:0;background:none;cursor:pointer;color:inherit">×</button>
-                                    @endif</span>
-                            </form>
+                            <span class="chip approved">${g.role().name()}@if(g.orgId() != null) · ${orgs.stream().filter(o -> o.id().equals(g.orgId())).findFirst().map(o -> o.code().name()).orElse("")}@endif</span>
                         @endfor
                     </td>
-                    <td>
-                        <form method="post" action="/admin/users/${u.id()}/grant" class="row">
-                            <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
-                            <select name="role" style="width:auto">
-                                @for(var r : roles)<option value="${r.name()}">${r.name()}</option>@endfor
-                            </select>
-                            <select name="orgId" style="width:auto">
-                                @for(var o : orgs)<option value="${o.id()}">${o.code().name()}</option>@endfor
-                            </select>
-                            <button class="btn secondary small" type="submit">Надати</button>
-                        </form>
-                    </td>
                     <td class="right">
+                        !{boolean isAdmin = u.grants().stream().anyMatch(g -> g.role() == Role.ADMIN);}
+                        @if(!(isAdmin && u.id().equals(ctx.user().userId())))
+                            <form class="inline-form" method="post" action="/admin/users/${u.id()}/admin">
+                                <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
+                                <input type="hidden" name="admin" value="${String.valueOf(!isAdmin)}">
+                                <button class="btn secondary small" type="submit">${isAdmin ? "Забрати адміна" : "Зробити адміном"}</button>
+                            </form>
+                        @endif
                         <form class="inline-form" method="post" action="/admin/users/${u.id()}/active">
                             <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
                             <input type="hidden" name="active" value="${String.valueOf(!u.active())}">
