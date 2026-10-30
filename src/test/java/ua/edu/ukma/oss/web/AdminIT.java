@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import jakarta.servlet.http.Cookie;
@@ -42,6 +43,7 @@ class AdminIT {
     NotificationAdminService notifications;
 
     Cookie admin;
+    Long adminId;
     Cookie student;
     Long ks;
 
@@ -49,7 +51,8 @@ class AdminIT {
     void setUp() {
         ks = organizations.getByCode(OrgCode.KS).id();
         String adminEmail = "admin-" + UUID.randomUUID() + "@ukma.edu.ua";
-        users.grant(users.register(adminEmail, "s3cret-pass", "Admin").id(), Role.ADMIN, null);
+        adminId = users.register(adminEmail, "s3cret-pass", "Admin").id();
+        users.grant(adminId, Role.ADMIN, null);
         admin = new Cookie("OSS_TOKEN", auth.login(adminEmail, "s3cret-pass"));
         String studentEmail = "st-" + UUID.randomUUID() + "@ukma.edu.ua";
         users.register(studentEmail, "s3cret-pass", "Student");
@@ -119,5 +122,28 @@ class AdminIT {
         mvc.perform(post("/admin/grants/" + grantIds.getFirst() + "/revoke").with(csrf()).cookie(admin))
                 .andExpect(status().is3xxRedirection());
         assertThat(users.get(id).grants()).isEmpty();
+    }
+
+    @Test
+    void administratorCannotRevokeOwnAdministratorRole() throws Exception {
+        Long grantId = users.get(adminId).grants().getFirst().id();
+
+        mvc.perform(post("/admin/grants/" + grantId + "/revoke").with(csrf()).cookie(admin)
+                        .header("Referer", "http://localhost/admin"))
+                .andExpect(flash().attributeExists("error"));
+
+        assertThat(users.get(adminId).grants()).hasSize(1);
+    }
+
+    @Test
+    void disableButtonSendsAnExplicitValueAndTogglesTheAccount() throws Exception {
+        Long id = users.register("d-" + UUID.randomUUID() + "@ukma.edu.ua", "s3cret-pass", "Toggled").id();
+
+        String page = mvc.perform(get("/admin").cookie(admin)).andReturn().getResponse().getContentAsString();
+        assertThat(page).contains("name=\"active\" value=\"false\"");
+
+        mvc.perform(post("/admin/users/" + id + "/active").with(csrf()).cookie(admin).param("active", "false"))
+                .andExpect(status().is3xxRedirection());
+        assertThat(users.get(id).active()).isFalse();
     }
 }

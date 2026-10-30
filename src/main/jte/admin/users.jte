@@ -26,7 +26,9 @@
                             <form class="inline-form" method="post" action="/admin/grants/${g.id()}/revoke">
                                 <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
                                 <span class="chip approved">${g.role().name()}@if(g.orgId() != null) · ${orgs.stream().filter(o -> o.id().equals(g.orgId())).findFirst().map(o -> o.code().name()).orElse("")}@endif
-                                    <button type="submit" title="Відкликати" style="border:0;background:none;cursor:pointer;color:inherit">×</button></span>
+                                    @if(!(g.role() == Role.ADMIN && u.id().equals(ctx.user().userId())))
+                                        <button type="submit" title="Відкликати" style="border:0;background:none;cursor:pointer;color:inherit">×</button>
+                                    @endif</span>
                             </form>
                         @endfor
                     </td>
@@ -45,7 +47,7 @@
                     <td class="right">
                         <form class="inline-form" method="post" action="/admin/users/${u.id()}/active">
                             <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
-                            <input type="hidden" name="active" value="${!u.active()}">
+                            <input type="hidden" name="active" value="${String.valueOf(!u.active())}">
                             <button class="btn ${u.active() ? "danger" : "secondary"} small" type="submit">${u.active() ? "Вимкнути" : "Увімкнути"}</button>
                         </form>
                     </td>

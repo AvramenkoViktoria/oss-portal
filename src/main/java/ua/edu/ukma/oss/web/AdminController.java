@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ua.edu.ukma.oss.auth.AuthPrincipal;
 import ua.edu.ukma.oss.auth.Role;
 import ua.edu.ukma.oss.auth.UserDto;
 import ua.edu.ukma.oss.auth.UserService;
@@ -57,7 +59,13 @@ class AdminController {
     }
 
     @PostMapping("/admin/grants/{grantId}/revoke")
-    String revoke(@PathVariable Long grantId, RedirectAttributes redirect) {
+    String revoke(@PathVariable Long grantId, @AuthenticationPrincipal AuthPrincipal admin,
+                  RedirectAttributes redirect) {
+        boolean ownAdminRole = users.get(admin.userId()).grants().stream()
+                .anyMatch(g -> g.id().equals(grantId) && g.role() == Role.ADMIN);
+        if (ownAdminRole) {
+            throw new BusinessRuleException("Адміністратор не може відкликати власну роль адміністратора");
+        }
         users.revoke(grantId);
         redirect.addFlashAttribute("success", "Роль відкликано");
         return "redirect:/admin";
