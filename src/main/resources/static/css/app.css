@@ -227,9 +227,11 @@ table.data th { font-size: .78rem; text-transform: uppercase; letter-spacing: .0
 .cal-event.danger { background: var(--danger-bg); color: var(--danger); border-color: var(--danger); }
 .cal-time { font-weight: 700; }
 
-/* Cards placed in a grid share the row height and ignore the stacked-card spacing. */
+/* Cards placed in a grid share the row height and ignore the stacked-card spacing.
+   Only a trailing action button is pinned to the bottom; lists and text stay under the heading. */
 .grid > .card { margin-top: 0; display: flex; flex-direction: column; }
-.grid > .card > :last-child { margin-top: auto; }
+.grid > .card > .btn:last-child { margin-top: auto; align-self: flex-start; }
+.grid > .card > p:last-child:has(> .btn:only-child) { margin-top: auto; }
 
 /* Centered single-column forms (login, registration, new petition) */
 .form-narrow { margin-left: auto; margin-right: auto; }
