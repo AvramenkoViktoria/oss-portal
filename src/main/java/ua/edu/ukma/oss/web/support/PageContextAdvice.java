@@ -27,6 +27,13 @@ class PageContextAdvice {
         this.formats = new Formats(clock.getZone());
     }
 
+    /**
+     * A user seated in a body or holding an editor role of one.
+     */
+    private boolean isBodyMember(AuthPrincipal user) {
+        return user != null && (!user.orgIds().isEmpty() || organizations.isMember(user.userId()));
+    }
+
     @ModelAttribute("ctx")
     PageContext pageContext(@AuthenticationPrincipal AuthPrincipal user, HttpServletRequest request) {
         CsrfToken csrf = (CsrfToken) request.getAttribute("_csrf");
@@ -39,6 +46,6 @@ class PageContextAdvice {
                 request.getRequestURI(),
                 flash == null ? null : (String) flash.get("success"),
                 flash == null ? null : (String) flash.get("error"),
-                editable, formats);
+                editable, isBodyMember(user), formats);
     }
 }

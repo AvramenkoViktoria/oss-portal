@@ -40,7 +40,9 @@
                 <h2 style="margin:0">Маєте пропозицію?</h2>
                 <p class="muted" style="margin:.25rem 0 0">Студенти, які не входять до складу СК чи КС, можуть подати петицію до будь-якого з органів.</p>
             </div>
-            <a class="btn" href="/petitions/new">Подати петицію</a>
+            @if(ctx.canPetition())
+                <a class="btn" href="/petitions/new">Подати петицію</a>
+            @endif
         </div>
     </section>
 `)

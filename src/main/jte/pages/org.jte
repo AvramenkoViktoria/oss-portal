@@ -11,7 +11,9 @@
             <h1>${page.org().name()}</h1>
             <p class="muted" style="margin:0">Анонси та протоколи публікуються у ${Labels.messenger(page.org().messenger())}.</p>
         </div>
-        <a class="btn" href="/petitions/new?org=${code}">Подати петицію</a>
+        @if(ctx.canPetition())
+            <a class="btn" href="/petitions/new?org=${code}">Подати петицію</a>
+        @endif
     </div>
 
     <section class="section">

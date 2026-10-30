@@ -10,10 +10,17 @@ import ua.edu.ukma.oss.organization.OrganizationDto;
  */
 public record PageContext(AuthPrincipal user, String csrfParam, String csrfToken, String path,
                           String flashSuccess, String flashError, List<OrganizationDto> editableOrgs,
-                          Formats fmt) {
+                          boolean sealedMember, Formats fmt) {
 
     public boolean isAuthenticated() {
         return user != null;
+    }
+
+    /**
+     * Whether the page may offer petitions: members of the SK and the KS act through their body instead.
+     */
+    public boolean canPetition() {
+        return !sealedMember;
     }
 
     public boolean isAdmin() {

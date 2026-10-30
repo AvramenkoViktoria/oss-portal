@@ -16,6 +16,7 @@ import ua.edu.ukma.oss.meeting.MeetingService;
 import ua.edu.ukma.oss.organization.OrganizationDto;
 import ua.edu.ukma.oss.organization.OrganizationService;
 import ua.edu.ukma.oss.petition.PetitionDto;
+import ua.edu.ukma.oss.shared.BusinessRuleException;
 import ua.edu.ukma.oss.petition.PetitionService;
 import ua.edu.ukma.oss.petition.SubmitCmd;
 import ua.edu.ukma.oss.web.view.PetitionRow;
@@ -40,7 +41,8 @@ class PetitionController {
     }
 
     @GetMapping("/petitions/new")
-    String form(@RequestParam(required = false) String org, Model model) {
+    String form(@AuthenticationPrincipal AuthPrincipal user, @RequestParam(required = false) String org, Model model) {
+        requireNotMember(user);
         model.addAttribute("orgs", organizations.all());
         model.addAttribute("selected", org == null ? null : access.org(org).code().name());
         return "pages/petitionNew";
@@ -49,9 +51,16 @@ class PetitionController {
     @PostMapping("/petitions")
     String submit(@AuthenticationPrincipal AuthPrincipal user, @RequestParam Long orgId, @RequestParam String title,
                   @RequestParam String text, RedirectAttributes redirect) {
+        requireNotMember(user);
         petitions.submit(new SubmitCmd(user.userId(), orgId, title, text));
         redirect.addFlashAttribute("success", "Петицію подано. Статус можна відстежувати на цій сторінці.");
         return "redirect:/petitions/mine";
+    }
+
+    private void requireNotMember(AuthPrincipal user) {
+        if (!user.orgIds().isEmpty() || organizations.isMember(user.userId())) {
+            throw new BusinessRuleException("Члени СК та КС не можуть подавати петиції");
+        }
     }
 
     @GetMapping("/petitions/{id:\\d+}")

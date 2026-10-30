@@ -20,7 +20,7 @@
             <a href="/" class="${section.equals("home") ? "active" : ""}">Головна</a>
             <a href="/orgs/sk" class="${section.equals("sk") ? "active" : ""}">Студентська колегія</a>
             <a href="/orgs/ks" class="${section.equals("ks") ? "active" : ""}">Конгрегація студентів</a>
-            @if(ctx.isAuthenticated())
+            @if(ctx.isAuthenticated() && ctx.canPetition())
                 <a href="/petitions/mine" class="${section.equals("petitions") ? "active" : ""}">Мої петиції</a>
             @endif
             @for(var org : ctx.editableOrgs())
