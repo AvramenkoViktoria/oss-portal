@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -71,6 +72,7 @@ class DemoDataLoader implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         // The marker is a demo-only account: the admin may already exist through the first-admin bootstrap.
         if (users.all().stream().anyMatch(u -> u.email().equals(MARKER_EMAIL))) {
+            addBulkMeetings();
             return;
         }
         Long adminId = users.all().stream().filter(u -> u.email().equals(ADMIN_EMAIL)).findFirst()
@@ -148,8 +150,101 @@ class DemoDataLoader implements ApplicationRunner {
                 now.plus(9, ChronoUnit.DAYS), null));
         meetings.addAgendaItem(ksUpcoming.id(), "Вибори голови конгрегації");
 
+        addBulkMeetings();
         log.info("Demo data loaded. Accounts (password {}): {}, sk.1@ukma.edu.ua (SK editor), "
                 + "ks.1@ukma.edu.ua (KS editor), student1@ukma.edu.ua", PASSWORD, ADMIN_EMAIL);
+    }
+
+    /**
+     * Fills the calendars of both bodies with meetings in every state, so the cabinets have something to browse:
+     * past meetings with published, approved, draft and missing protocols, cancelled ones and a future schedule.
+     * Runs once; bodies that were not seated by this loader are left alone.
+     */
+    private void addBulkMeetings() {
+        OrganizationDto sk = organizations.getByCode(OrgCode.SK);
+        OrganizationDto ks = organizations.getByCode(OrgCode.KS);
+        if (meetings.byOrg(sk.id()).stream().anyMatch(m -> m.title().equals("Засідання СК №1"))
+                || organizations.members(sk.id()).size() != SK.length) {
+            return;
+        }
+        Long adminId = users.all().stream().filter(u -> u.email().equals(ADMIN_EMAIL)).findFirst()
+                .map(UserDto::id).orElseThrow();
+        Instant today = Instant.now().truncatedTo(ChronoUnit.DAYS);
+        fillCalendar(sk, "СК", SK, adminId, today, new Random(26));
+        fillCalendar(ks, "КС", KS, adminId, today, new Random(12));
+        log.info("Demo meetings added for the SK and the KS calendars");
+    }
+
+    private static final List<String> TOPICS = List.of("Бюджет семестру", "Студентський простір", "Звіт відділів",
+            "Гуртожитки", "Академічна доброчесність", "Навчальні програми", "Культурні заходи", "Волонтерство",
+            "Спортивні заходи", "Зміни до положення", "Комунікація зі студентами", "Закупівлі");
+
+    private void fillCalendar(OrganizationDto org, String abbr, String[] names, Long adminId, Instant today,
+                              Random rnd) {
+        // Offsets in days from today; negative are past. Some days hold two meetings.
+        int[] past = {-150, -138, -124, -110, -96, -83, -70, -59, -47, -35, -29, -23, -23, -16, -9, -3};
+        int[] future = {2, 6, 6, 11, 17, 24, 31, 38, 52, 66};
+        int number = 1;
+        for (int i = 0; i < past.length; i++) {
+            String title = (i % 4 == 3 ? "Позачергове засідання " : "Засідання ") + abbr + " №" + number++;
+            MeetingDto m = meetings.schedule(new ScheduleCmd(org.id(), title,
+                    today.plus(past[i], ChronoUnit.DAYS).plus(10 + rnd.nextInt(8), ChronoUnit.HOURS), null));
+            addAgenda(m, rnd);
+            if (i % 9 == 8) {
+                // A meeting that never took place.
+                meetings.cancel(m.id());
+                continue;
+            }
+            meetings.markHeld(m.id());
+            ProtocolDto protocol = protocolReader.byMeeting(m.id()).orElseThrow();
+            // The latest meetings are still in work, older ones are approved or published, one has no document.
+            int age = past.length - 1 - i;
+            if (age == 0) {
+                continue;
+            }
+            attach(protocol, "protocol-" + protocol.id() + ".docx", protocolText(
+                    org.code() == OrgCode.SK ? "Засідання Студентської Колегії" : "Засідання Конгрегації студентів",
+                    names.length, randomVotes(names, rnd, 1 + rnd.nextInt(3))));
+            if (age >= 3) {
+                protocolWriter.approve(protocol.id(), adminId);
+            }
+            if (age >= 5) {
+                protocolWriter.publish(protocol.id(), adminId);
+            }
+        }
+        for (int day : future) {
+            String title = "Засідання " + abbr + " №" + number++;
+            MeetingDto m = meetings.schedule(new ScheduleCmd(org.id(), title,
+                    today.plus(day, ChronoUnit.DAYS).plus(10 + rnd.nextInt(8), ChronoUnit.HOURS),
+                    rnd.nextBoolean() ? "https://stream.example.org/" + abbr.toLowerCase() + "-" + number : null));
+            addAgenda(m, rnd);
+            if (day == 17) {
+                meetings.cancel(m.id());
+            }
+        }
+    }
+
+    private void addAgenda(MeetingDto meeting, Random rnd) {
+        for (int i = 0, items = 1 + rnd.nextInt(3); i < items; i++) {
+            meetings.addAgendaItem(meeting.id(), TOPICS.get(rnd.nextInt(TOPICS.size())));
+        }
+    }
+
+    private static Vote[] randomVotes(String[] names, Random rnd, int count) {
+        Vote[] votes = new Vote[count];
+        for (int v = 0; v < count; v++) {
+            List<String> forVotes = new ArrayList<>();
+            List<String> against = new ArrayList<>();
+            List<String> abstain = new ArrayList<>();
+            List<String> absent = new ArrayList<>();
+            for (String name : names) {
+                int roll = rnd.nextInt(10);
+                (roll < 6 ? forVotes : roll < 8 ? against : roll < 9 ? abstain : absent).add(name);
+            }
+            votes[v] = new Vote(TOPICS.get(rnd.nextInt(TOPICS.size())) + ": ухвалити пропозицію.", forVotes, against,
+                    abstain, absent, forVotes.size() * 2 > names.length);
+        }
+        return votes;
     }
 
     /**
