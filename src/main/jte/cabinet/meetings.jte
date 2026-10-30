@@ -4,11 +4,12 @@
 @param PageContext ctx
 @param OrganizationDto org
 @param CalendarView calendar
+@param String view = "calendar"
 !{String code = org.code().name().toLowerCase();}
 @template.layout.page(ctx = ctx, title = "Засідання " + org.code().name(), section = "cabinet-" + code, content = @`
     @template.components.cabinetHead(org = org, active = "meetings")
     <section class="card">
-        @template.components.calendar(ctx = ctx, cal = calendar, navPath = "/cabinet/" + code + "/meetings", meetingPath = "/cabinet/" + code + "/meetings/")
+        @template.components.calendar(ctx = ctx, cal = calendar, navPath = "/cabinet/" + code + "/meetings", meetingPath = "/cabinet/" + code + "/meetings/", view = view)
     </section>
     <section class="card section">
         <h2>Запланувати засідання</h2>

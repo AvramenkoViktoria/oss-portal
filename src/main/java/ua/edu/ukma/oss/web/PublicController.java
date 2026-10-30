@@ -52,9 +52,11 @@ class PublicController {
     }
 
     @GetMapping("/orgs/{code}")
-    String org(@PathVariable String code, @RequestParam(required = false) String month, Model model) {
+    String org(@PathVariable String code, @RequestParam(required = false) String month,
+               @RequestParam(defaultValue = "calendar") String view, Model model) {
         OrganizationDto org = access.org(code);
         model.addAttribute("page", views.orgPage(org, CalendarView.parseMonth(month, views.currentMonth())));
+        model.addAttribute("view", "list".equals(view) ? "list" : "calendar");
         return "pages/org";
     }
 

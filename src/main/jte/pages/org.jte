@@ -3,6 +3,7 @@
 @import ua.edu.ukma.oss.web.view.OrgPage
 @param PageContext ctx
 @param OrgPage page
+@param String view = "calendar"
 !{String code = page.org().code().name().toLowerCase();}
 @template.layout.page(ctx = ctx, title = page.org().name(), section = code, content = @`
     <div class="page-head">
@@ -39,7 +40,7 @@
     <section class="section">
         <h2>Засідання</h2>
         <div class="card">
-            @template.components.calendar(ctx = ctx, cal = page.calendar(), navPath = "/orgs/" + code, meetingPath = "/meetings/")
+            @template.components.calendar(ctx = ctx, cal = page.calendar(), navPath = "/orgs/" + code, meetingPath = "/meetings/", view = view)
         </div>
         @if(!page.upcoming().isEmpty())
             <h3 style="margin-top:1rem">Найближчі</h3>

@@ -227,3 +227,4 @@ table.data th { font-size: .78rem; text-transform: uppercase; letter-spacing: .0
 
 /* Centered single-column forms (login, registration, new petition) */
 .form-narrow { margin-left: auto; margin-right: auto; }
+.view-switch { margin-bottom: .75rem; }

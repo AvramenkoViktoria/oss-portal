@@ -89,11 +89,13 @@ class CabinetController {
 
     @GetMapping("/cabinet/{code}/meetings")
     String meetingList(@PathVariable String code, @RequestParam(required = false) String month,
+                       @RequestParam(defaultValue = "calendar") String view,
                        @AuthenticationPrincipal AuthPrincipal user, Model model) {
         OrganizationDto org = access.requireEditor(user, code);
         model.addAttribute("org", org);
         model.addAttribute("calendar", views.calendar(CalendarView.parseMonth(month, views.currentMonth()),
                 meetings.byOrg(org.id())));
+        model.addAttribute("view", "list".equals(view) ? "list" : "calendar");
         return "cabinet/meetings";
     }
 
