@@ -7,6 +7,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -14,6 +15,7 @@ import ua.edu.ukma.oss.auth.AuthPrincipal;
 import ua.edu.ukma.oss.meeting.MeetingService;
 import ua.edu.ukma.oss.organization.OrganizationDto;
 import ua.edu.ukma.oss.organization.OrganizationService;
+import ua.edu.ukma.oss.petition.PetitionDto;
 import ua.edu.ukma.oss.petition.PetitionService;
 import ua.edu.ukma.oss.petition.SubmitCmd;
 import ua.edu.ukma.oss.web.view.PetitionRow;
@@ -50,6 +52,15 @@ class PetitionController {
         petitions.submit(new SubmitCmd(user.userId(), orgId, title, text));
         redirect.addFlashAttribute("success", "Петицію подано. Статус можна відстежувати на цій сторінці.");
         return "redirect:/petitions/mine";
+    }
+
+    @GetMapping("/petitions/{id:\\d+}")
+    String view(@PathVariable Long id, Model model) {
+        PetitionDto petition = petitions.get(id);
+        model.addAttribute("petition", petition);
+        model.addAttribute("org", organizations.get(petition.orgId()));
+        model.addAttribute("meetingTitle", petition.meetingId() == null ? null : meetings.get(petition.meetingId()).title());
+        return "pages/petition";
     }
 
     @GetMapping("/petitions/mine")

@@ -72,7 +72,7 @@
                     @for(var p : page.petitions())
                         <li class="row between">
                             <div>
-                                <strong>${p.title()}</strong>
+                                <a href="/petitions/${p.id()}"><strong>${p.title()}</strong></a>
                                 <div class="muted small">
                                     ${ctx.fmt().date(p.createdAt())}
                                     @if(p.meetingId() != null) · <a href="/meetings/${p.meetingId()}">засідання</a>@endif
