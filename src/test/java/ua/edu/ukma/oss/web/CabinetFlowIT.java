@@ -17,10 +17,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,14 +31,14 @@ import ua.edu.ukma.oss.auth.UserService;
 import ua.edu.ukma.oss.meeting.MeetingDto;
 import ua.edu.ukma.oss.meeting.MeetingService;
 import ua.edu.ukma.oss.meeting.ScheduleCmd;
-import ua.edu.ukma.oss.organization.AddMemberCmd;
-import ua.edu.ukma.oss.organization.MembershipDto;
 import ua.edu.ukma.oss.organization.OrgCode;
 import ua.edu.ukma.oss.organization.OrganizationService;
 import ua.edu.ukma.oss.protocol.ProtocolReader;
 import ua.edu.ukma.oss.protocol.ProtocolStatus;
 import ua.edu.ukma.oss.support.IntegrationTest;
+import ua.edu.ukma.oss.voting.VotingDto;
 import ua.edu.ukma.oss.voting.VotingService;
+import ua.edu.ukma.oss.support.Docx;
 
 /**
  * Drives the editors' cabinet end to end through HTTP: meeting, protocol lifecycle, voting.
@@ -71,7 +68,6 @@ class CabinetFlowIT {
     Long ks;
     Cookie editor;
     Cookie student;
-    final List<Long> memberships = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -79,18 +75,6 @@ class CabinetFlowIT {
         ks = organizations.getByCode(OrgCode.KS).id();
         editor = signIn("Editor", Role.SK_MEMBER, sk);
         student = signIn("Student", null, null);
-        // Two seated members to vote; ended again in tearDown so other tests see no leftovers.
-        for (int i = 0; i < 2; i++) {
-            Long userId = users.register("seat-" + UUID.randomUUID() + "@ukma.edu.ua", "s3cret-pass", "Member " + i).id();
-            MembershipDto m = organizations.addMember(new AddMemberCmd(userId, sk, "FI", "Member",
-                    LocalDate.now().minusDays(10), null));
-            memberships.add(m.id());
-        }
-    }
-
-    @AfterEach
-    void tearDown() {
-        memberships.forEach(id -> organizations.endTerm(id, LocalDate.now().minusDays(4)));
     }
 
     private Cookie signIn(String name, Role role, Long orgId) {
@@ -172,22 +156,29 @@ class CabinetFlowIT {
                 .andExpect(flash().attributeExists("error"));
         assertThat(protocols.get(protocolId).status()).isEqualTo(ProtocolStatus.DRAFT);
 
-        // 4. Attach the document and record a voting.
+        // 4. A protocol without the voting section is refused; one with it creates the votings itself.
         mvc.perform(multipart(protocolUrl + "/file")
-                        .file(new MockMultipartFile("file", "minutes.pdf", "application/pdf", "%PDF-1.4".getBytes()))
+                        .file(new MockMultipartFile("file", "minutes.docx", "application/octet-stream",
+                                Docx.of("ПРОТОКОЛ", "Слухали: звіт.")))
+                        .with(csrf()).cookie(editor).header("Referer", "http://localhost" + protocolUrl))
+                .andExpect(flash().attribute("error", org.hamcrest.Matchers.containsString("розділу з результатами голосування")));
+        assertThat(protocols.get(protocolId).hasFile()).isFalse();
+        assertThat(votings.byProtocol(protocolId)).isEmpty();
+
+        mvc.perform(multipart(protocolUrl + "/file")
+                        .file(new MockMultipartFile("file", "minutes.docx", "application/octet-stream",
+                                Docx.of("Поставили на голосування:", "Approve the budget?", "Результати голосування:",
+                                        "За - 4", "Проти - 1", "Утримався - 0", "Не голосували - 1", "Рішення прийнято")))
                         .with(csrf()).cookie(editor))
-                .andExpect(status().is3xxRedirection());
-        mvc.perform(post(protocolUrl + "/votings").with(csrf()).cookie(editor).param("question", "Approve the budget?"))
                 .andExpect(status().is3xxRedirection());
         String workspace = mvc.perform(get(protocolUrl).cookie(editor)).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(workspace).contains("Approve the budget?").contains("Чернетка");
-        Long votingId = firstVotingId(protocolId);
-        var request = post(protocolUrl + "/votings/" + votingId + "/record").with(csrf()).cookie(editor);
-        for (Long membershipId : memberships) {
-            request.param("choice_" + membershipId, "FOR");
-        }
-        mvc.perform(request).andExpect(status().is3xxRedirection());
+        assertThat(votings.byProtocol(protocolId)).singleElement()
+                .extracting(VotingDto::votesFor, VotingDto::votesAgainst, VotingDto::votesAbsent, VotingDto::present)
+                .containsExactly(4, 1, 1, 6);
+        mvc.perform(post(protocolUrl + "/votings").with(csrf()).cookie(editor).param("question", "By hand"))
+                .andExpect(status().is4xxClientError());
 
         // 5. Approve, then publish.
         mvc.perform(post(protocolUrl + "/approve").with(csrf()).cookie(editor)).andExpect(status().is3xxRedirection());
@@ -201,9 +192,5 @@ class CabinetFlowIT {
         String publicPage = mvc.perform(get("/protocols/" + protocolId)).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         assertThat(publicPage).contains(title).contains("Approve the budget?").contains("Рішення прийнято");
-    }
-
-    private Long firstVotingId(Long protocolId) {
-        return votings.byProtocol(protocolId).getFirst().id();
     }
 }

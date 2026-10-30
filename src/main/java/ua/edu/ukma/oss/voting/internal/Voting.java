@@ -15,9 +15,6 @@ class Voting extends BaseEntity {
     @Column(name = "protocol_id", nullable = false)
     private Long protocolId;
 
-    @Column(name = "agenda_item_id")
-    private Long agendaItemId;
-
     @Column(nullable = false, columnDefinition = "text")
     private String question;
 
@@ -33,21 +30,28 @@ class Voting extends BaseEntity {
     @Column(name = "votes_abstain", nullable = false)
     private int votesAbstain;
 
+    @Column(name = "votes_absent", nullable = false)
+    private int votesAbsent;
+
+    @Column(nullable = false)
+    private int present;
+
     protected Voting() {
     }
 
-    Voting(Long protocolId, Long agendaItemId, String question) {
+    Voting(Long protocolId, ParsedVoting parsed) {
         this.protocolId = protocolId;
-        this.agendaItemId = agendaItemId;
-        this.question = question;
+        this.question = parsed.question();
+        this.result = parsed.result();
+        this.votesFor = parsed.votesFor();
+        this.votesAgainst = parsed.votesAgainst();
+        this.votesAbstain = parsed.votesAbstain();
+        this.votesAbsent = parsed.votesAbsent();
+        this.present = parsed.present();
     }
 
     Long getProtocolId() {
         return protocolId;
-    }
-
-    Long getAgendaItemId() {
-        return agendaItemId;
     }
 
     String getQuestion() {
@@ -70,10 +74,11 @@ class Voting extends BaseEntity {
         return votesAbstain;
     }
 
-    void applyTally(VoteCounter.Counts counts) {
-        this.votesFor = counts.votesFor();
-        this.votesAgainst = counts.votesAgainst();
-        this.votesAbstain = counts.votesAbstain();
-        this.result = counts.result();
+    int getVotesAbsent() {
+        return votesAbsent;
+    }
+
+    int getPresent() {
+        return present;
     }
 }

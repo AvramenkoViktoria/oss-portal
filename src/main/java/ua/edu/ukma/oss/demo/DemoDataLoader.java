@@ -32,10 +32,6 @@ import ua.edu.ukma.oss.petition.SubmitCmd;
 import ua.edu.ukma.oss.protocol.ProtocolDto;
 import ua.edu.ukma.oss.protocol.ProtocolReader;
 import ua.edu.ukma.oss.protocol.ProtocolWriter;
-import ua.edu.ukma.oss.voting.CreateVotingCmd;
-import ua.edu.ukma.oss.voting.RecordCmd;
-import ua.edu.ukma.oss.voting.VoteChoice;
-import ua.edu.ukma.oss.voting.VotingDto;
 import ua.edu.ukma.oss.voting.VotingService;
 
 /**
@@ -86,10 +82,10 @@ class DemoDataLoader implements ApplicationRunner {
 
         OrganizationDto sk = organizations.getByCode(OrgCode.SK);
         OrganizationDto ks = organizations.getByCode(OrgCode.KS);
-        List<MembershipDto> skSeats = seat(sk, "sk", Role.SK_MEMBER, List.of(
+        seat(sk, "sk", Role.SK_MEMBER, List.of(
                 "Олена Коваленко|ФІ|Голова колегії", "Андрій Шевченко|ФПвН|Заступник голови",
                 "Марія Бондаренко|ФГН|Секретар", "Іван Мельник|ФеН|Член колегії", "Софія Ткаченко|ФП|Член колегії"));
-        List<MembershipDto> ksSeats = seat(ks, "ks", Role.KS_DELEGATE, List.of(
+        seat(ks, "ks", Role.KS_DELEGATE, List.of(
                 "Дмитро Кравченко|ФІ|Голова конгрегації", "Анна Олійник|ФПвН|Заступник голови",
                 "Максим Лисенко|ФГН|Секретар", "Катерина Гончар|ФеН|Делегат", "Богдан Мороз|ФП|Делегат",
                 "Юлія Савченко|ФІ|Делегат", "Тарас Романенко|ФГН|Делегат"));
@@ -110,19 +106,21 @@ class DemoDataLoader implements ApplicationRunner {
         petitions.attach(considered.id(), skHeld.id(), PetitionLink.AGENDA_ITEM);
         meetings.markHeld(skHeld.id());
         ProtocolDto published = protocolReader.byMeeting(skHeld.id()).orElseThrow();
-        vote(published.id(), skSeats, "Затвердити бюджет семестру?", List.of(
-                VoteChoice.FOR, VoteChoice.FOR, VoteChoice.FOR, VoteChoice.AGAINST, VoteChoice.ABSTAIN));
-        vote(published.id(), skSeats, "Підтримати клопотання про продовження роботи бібліотеки?", List.of(
-                VoteChoice.FOR, VoteChoice.AGAINST, VoteChoice.ABSTAIN, VoteChoice.ABSENT, VoteChoice.ABSENT));
-        publish(published, "Протокол засідання СК: бюджет семестру", adminId);
+        attach(published, "protocol-sk-budget.docx", protocolText("Засідання Студентської Колегії", 5,
+                new Vote("Затвердження бюджету семестру.", List.of(SK[0], SK[1], SK[2]), List.of(SK[3]),
+                        List.of(SK[4]), List.of(), true),
+                new Vote("Підтримання клопотання про продовження роботи бібліотеки.", List.of(SK[0]), List.of(SK[1]),
+                        List.of(SK[2]), List.of(SK[3], SK[4]), false)));
+        approveAndPublish(published, adminId);
 
         MeetingDto skDraft = meetings.schedule(new ScheduleCmd(sk.id(), "Позачергове засідання СК: студентський простір",
                 now.minus(4, ChronoUnit.DAYS), null));
         meetings.addAgendaItem(skDraft.id(), "Облаштування студентського простору");
         meetings.markHeld(skDraft.id());
         ProtocolDto draft = protocolReader.byMeeting(skDraft.id()).orElseThrow();
-        protocolWriter.attachFile(draft.id(), "protocol-sk-draft.pdf", pdf("Draft protocol of the SK meeting"));
-        votings.create(new CreateVotingCmd(draft.id(), null, "Виділити кошти на облаштування студентського простору?"));
+        attach(draft, "protocol-sk-draft.docx", protocolText("Засідання Студентської Колегії", 5,
+                new Vote("Виділення коштів на облаштування студентського простору.",
+                        List.of(SK[0], SK[1], SK[2], SK[3]), List.of(), List.of(SK[4]), List.of(), true)));
 
         PetitionDto scheduled = petitions.submit(new SubmitCmd(student2, sk.id(),
                 "Облаштувати зони відпочинку у корпусах", "Пропоную встановити м’які зони відпочинку у 2 та 5 корпусах."));
@@ -142,10 +140,10 @@ class DemoDataLoader implements ApplicationRunner {
         meetings.addAgendaItem(ksHeld.id(), "Зміни до регламенту");
         meetings.markHeld(ksHeld.id());
         ProtocolDto ksProtocol = protocolReader.byMeeting(ksHeld.id()).orElseThrow();
-        vote(ksProtocol.id(), ksSeats, "Прийняти зміни до регламенту в цілому?", List.of(
-                VoteChoice.FOR, VoteChoice.FOR, VoteChoice.FOR, VoteChoice.FOR, VoteChoice.AGAINST,
-                VoteChoice.ABSTAIN, VoteChoice.ABSENT));
-        publish(ksProtocol, "Protocol of the KS meeting", adminId);
+        attach(ksProtocol, "protocol-ks-regulations.docx", protocolText("Засідання Конгрегації студентів", 7,
+                new Vote("Прийняття змін до регламенту в цілому.", List.of(KS[0], KS[1], KS[2], KS[3]),
+                        List.of(KS[4]), List.of(KS[5]), List.of(KS[6]), true)));
+        approveAndPublish(ksProtocol, adminId);
         MeetingDto ksUpcoming = meetings.schedule(new ScheduleCmd(ks.id(), "Засідання конгрегації: вибори голови",
                 now.plus(9, ChronoUnit.DAYS), null));
         meetings.addAgendaItem(ksUpcoming.id(), "Вибори голови конгрегації");
@@ -171,22 +169,42 @@ class DemoDataLoader implements ApplicationRunner {
         return seats;
     }
 
-    private void vote(Long protocolId, List<MembershipDto> seats, String question, List<VoteChoice> choices) {
-        VotingDto voting = votings.create(new CreateVotingCmd(protocolId, null, question));
-        Map<Long, VoteChoice> byMember = new HashMap<>();
-        for (int i = 0; i < seats.size(); i++) {
-            byMember.put(seats.get(i).id(), choices.get(i));
-        }
-        votings.record(new RecordCmd(voting.id(), byMember));
+    /**
+     * One voting of a demo protocol, written the way real protocols state it.
+     */
+    private record Vote(String question, List<String> votesFor, List<String> votesAgainst,
+                        List<String> votesAbstain, List<String> notVoted, boolean accepted) {
     }
 
-    private void publish(ProtocolDto protocol, String pdfTitle, Long actorId) {
-        protocolWriter.attachFile(protocol.id(), "protocol-" + protocol.id() + ".pdf", pdf(pdfTitle));
+    private static final String[] SK = {"Олена Коваленко", "Андрій Шевченко", "Марія Бондаренко", "Іван Мельник",
+        "Софія Ткаченко"};
+    private static final String[] KS = {"Дмитро Кравченко", "Анна Олійник", "Максим Лисенко", "Катерина Гончар",
+        "Богдан Мороз", "Юлія Савченко", "Тарас Романенко"};
+
+    private static String tally(String label, List<String> names) {
+        return label + " - " + names.size() + (names.isEmpty() ? "" : ": " + String.join("; ", names));
+    }
+
+    private static List<String> protocolText(String title, int present, Vote... votes) {
+        List<String> lines = new ArrayList<>(List.of("ПРОТОКОЛ", title, "Присутніх: " + present));
+        for (Vote v : votes) {
+            lines.addAll(List.of("Слухали: доповідь за пунктом порядку денного.", "Поставили на голосування:",
+                    v.question(), "Результати голосування:", tally("За", v.votesFor()),
+                    tally("Проти", v.votesAgainst()), tally("Утримався", v.votesAbstain()),
+                    tally("Не голосували", v.notVoted()),
+                    v.accepted() ? "Рішення прийнято" : "Рішення не прийнято"));
+        }
+        return lines;
+    }
+
+    private void attach(ProtocolDto protocol, String fileName, List<String> lines) {
+        byte[] content = SampleDocx.of(lines);
+        votings.importFromDocument(protocol.id(), fileName, content);
+        protocolWriter.attachFile(protocol.id(), fileName, new ByteArrayInputStream(content));
+    }
+
+    private void approveAndPublish(ProtocolDto protocol, Long actorId) {
         protocolWriter.approve(protocol.id(), actorId);
         protocolWriter.publish(protocol.id(), actorId);
-    }
-
-    private static ByteArrayInputStream pdf(String title) {
-        return new ByteArrayInputStream(SamplePdf.of(title));
     }
 }

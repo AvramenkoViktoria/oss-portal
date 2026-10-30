@@ -1,15 +1,11 @@
-@import java.util.List
 @import ua.edu.ukma.oss.organization.OrganizationDto
 @import ua.edu.ukma.oss.protocol.ProtocolStatus
-@import ua.edu.ukma.oss.voting.VoteChoice
 @import ua.edu.ukma.oss.web.support.Labels
 @import ua.edu.ukma.oss.web.support.PageContext
-@import ua.edu.ukma.oss.web.view.MemberRow
 @import ua.edu.ukma.oss.web.view.ProtocolPage
 @param PageContext ctx
 @param OrganizationDto org
 @param ProtocolPage page
-@param List<MemberRow> members
 @param boolean editable
 !{String code = org.code().name().toLowerCase();}
 !{var protocol = page.protocol();}
@@ -56,7 +52,7 @@
                         <input type="file" name="file" accept=".pdf,.docx" required>
                         <button class="btn secondary" type="submit">${protocol.hasFile() ? "Замінити" : "Прикріпити"}</button>
                     </form>
-                    <p class="muted small" style="margin:.5rem 0 0">Приймаються PDF та DOCX, до 10 МБ.</p>
+                    <p class="muted small" style="margin:.5rem 0 0">Приймаються PDF та DOCX, до 10 МБ. У протоколі обов’язково має бути розділ «Результати голосування», інакше документ не буде прийнято.</p>
                 @endif
             </section>
 
@@ -67,52 +63,8 @@
                 @endif
                 @for(var v : page.votings())
                     @template.components.votingBlock(v = v)
-                    @if(editable)
-                        <details style="margin-top:.5rem">
-                            <summary class="btn secondary small">${v.voting().isRecorded() ? "Змінити голоси" : "Внести голоси"}</summary>
-                            <form method="post" action="${base}/votings/${v.voting().id()}/record" class="vote-form">
-                                <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
-                                <table class="data">
-                                    <tbody>
-                                    @for(var m : members)
-                                        !{VoteChoice current = v.choiceByMember().getOrDefault(m.membershipId(), VoteChoice.FOR);}
-                                        <tr>
-                                            <td>${m.name()}<div class="muted small">${m.position()}</div></td>
-                                            <td>
-                                                @for(var c : VoteChoice.values())
-                                                    <label><input type="radio" name="choice_${m.membershipId()}" value="${c.name()}" checked="${c == current}"> ${Labels.choice(c)}</label>
-                                                @endfor
-                                            </td>
-                                        </tr>
-                                    @endfor
-                                    </tbody>
-                                </table>
-                                <button class="btn" type="submit">Зберегти голоси</button>
-                            </form>
-                        </details>
-                        <form method="post" action="${base}/votings/${v.voting().id()}/delete" style="margin-top:.5rem" onsubmit="return confirm('Видалити голосування?')">
-                            <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
-                            <button class="btn danger small" type="submit">Видалити голосування</button>
-                        </form>
-                    @endif
                 @endfor
-                @if(editable)
-                    <form method="post" action="${base}/votings" style="margin-top:1.25rem">
-                        <input type="hidden" name="${ctx.csrfParam()}" value="${ctx.csrfToken()}">
-                        <h3>Нове голосування</h3>
-                        <div class="field"><label for="question">Питання</label><textarea id="question" name="question" style="min-height:4rem" required></textarea></div>
-                        <div class="field">
-                            <label for="agendaItemId">Пункт порядку денного</label>
-                            <select id="agendaItemId" name="agendaItemId">
-                                <option value="">— без прив’язки —</option>
-                                @for(var item : page.meeting().agenda())
-                                    <option value="${item.id()}">${item.position()}. ${item.title()}</option>
-                                @endfor
-                            </select>
-                        </div>
-                        <button class="btn secondary" type="submit">Додати голосування</button>
-                    </form>
-                @endif
+                <p class="muted small" style="margin:.75rem 0 0">Голосування формуються автоматично з розділів «Результати голосування» завантаженого протоколу. Їх не можна створити чи змінити вручну: щоб виправити, завантажте оновлений документ.</p>
             </section>
         </div>
 

@@ -1,10 +1,8 @@
 package ua.edu.ukma.oss.web;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,9 +21,6 @@ import ua.edu.ukma.oss.protocol.ProtocolStatus;
 import ua.edu.ukma.oss.protocol.ProtocolWriter;
 import ua.edu.ukma.oss.shared.BusinessRuleException;
 import ua.edu.ukma.oss.shared.NotFoundException;
-import ua.edu.ukma.oss.voting.CreateVotingCmd;
-import ua.edu.ukma.oss.voting.RecordCmd;
-import ua.edu.ukma.oss.voting.VoteChoice;
 import ua.edu.ukma.oss.voting.VotingDto;
 import ua.edu.ukma.oss.voting.VotingService;
 import ua.edu.ukma.oss.web.view.ProtocolEntry;
@@ -36,8 +31,6 @@ import ua.edu.ukma.oss.web.view.ProtocolPage;
  */
 @Controller
 class CabinetProtocolController {
-
-    private static final String CHOICE_PREFIX = "choice_";
 
     private final WebAccess access;
     private final SiteViews views;
@@ -63,7 +56,6 @@ class CabinetProtocolController {
         ProtocolPage page = views.protocolPage(id, true);
         model.addAttribute("org", org);
         model.addAttribute("page", page);
-        model.addAttribute("members", views.currentMembers(org.id()));
         model.addAttribute("editable", page.protocol().status() == ProtocolStatus.DRAFT);
         return "cabinet/protocol";
     }
@@ -75,10 +67,11 @@ class CabinetProtocolController {
         if (file.isEmpty()) {
             throw new BusinessRuleException("Оберіть файл PDF або DOCX");
         }
-        try (var content = file.getInputStream()) {
-            writer.attachFile(id, file.getOriginalFilename(), content);
-        }
-        redirect.addFlashAttribute("success", "Документ прикріплено");
+        byte[] content = file.getBytes();
+        // Votings are read first: a protocol without a voting section is rejected before it is attached.
+        List<VotingDto> found = votings.importFromDocument(id, file.getOriginalFilename(), content);
+        writer.attachFile(id, file.getOriginalFilename(), new ByteArrayInputStream(content));
+        redirect.addFlashAttribute("success", "Документ прикріплено, розпізнано голосувань: " + found.size());
         return back(code, id);
     }
 
@@ -100,56 +93,12 @@ class CabinetProtocolController {
         return back(code, id);
     }
 
-    @PostMapping("/cabinet/{code}/protocols/{id}/votings")
-    String createVoting(@PathVariable String code, @PathVariable Long id, @AuthenticationPrincipal AuthPrincipal user,
-                        @RequestParam String question, @RequestParam(required = false) Long agendaItemId,
-                        RedirectAttributes redirect) {
-        owned(code, id, user);
-        votings.create(new CreateVotingCmd(id, agendaItemId, question));
-        redirect.addFlashAttribute("success", "Голосування додано — внесіть голоси членів");
-        return back(code, id);
-    }
-
-    @PostMapping("/cabinet/{code}/protocols/{id}/votings/{votingId}/record")
-    String record(@PathVariable String code, @PathVariable Long id, @PathVariable Long votingId,
-                  @AuthenticationPrincipal AuthPrincipal user, @RequestParam Map<String, String> params,
-                  RedirectAttributes redirect) {
-        owned(code, id, user);
-        ownedVoting(id, votingId);
-        Map<Long, VoteChoice> choices = new HashMap<>();
-        params.forEach((key, value) -> {
-            if (key.startsWith(CHOICE_PREFIX)) {
-                choices.put(Long.valueOf(key.substring(CHOICE_PREFIX.length())), VoteChoice.valueOf(value));
-            }
-        });
-        VotingDto result = votings.record(new RecordCmd(votingId, choices));
-        redirect.addFlashAttribute("success", "Голоси внесено: " + result.votesFor() + " за, "
-                + result.votesAgainst() + " проти, " + result.votesAbstain() + " утрималось");
-        return back(code, id);
-    }
-
-    @PostMapping("/cabinet/{code}/protocols/{id}/votings/{votingId}/delete")
-    String deleteVoting(@PathVariable String code, @PathVariable Long id, @PathVariable Long votingId,
-                        @AuthenticationPrincipal AuthPrincipal user, RedirectAttributes redirect) {
-        owned(code, id, user);
-        ownedVoting(id, votingId);
-        votings.remove(votingId);
-        redirect.addFlashAttribute("success", "Голосування видалено");
-        return back(code, id);
-    }
-
     private OrganizationDto owned(String code, Long protocolId, AuthPrincipal user) {
         OrganizationDto org = access.requireEditor(user, code);
         if (!reader.get(protocolId).orgId().equals(org.id())) {
             throw new NotFoundException("Protocol", protocolId);
         }
         return org;
-    }
-
-    private void ownedVoting(Long protocolId, Long votingId) {
-        if (!votings.get(votingId).protocolId().equals(protocolId)) {
-            throw new NotFoundException("Voting", votingId);
-        }
     }
 
     private static String back(String code, Long id) {

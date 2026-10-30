@@ -2,12 +2,11 @@ package ua.edu.ukma.oss.voting.internal;
 
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ua.edu.ukma.oss.meeting.MeetingService;
+import ua.edu.ukma.oss.auth.UserService;
 import ua.edu.ukma.oss.organization.MembershipDto;
 import ua.edu.ukma.oss.organization.OrganizationService;
 import ua.edu.ukma.oss.protocol.ProtocolDto;
@@ -15,12 +14,8 @@ import ua.edu.ukma.oss.protocol.ProtocolReader;
 import ua.edu.ukma.oss.protocol.ProtocolStatus;
 import ua.edu.ukma.oss.shared.BusinessRuleException;
 import ua.edu.ukma.oss.shared.NotFoundException;
-import ua.edu.ukma.oss.voting.CreateVotingCmd;
-import ua.edu.ukma.oss.voting.RecordCmd;
-import ua.edu.ukma.oss.voting.VoteChoice;
 import ua.edu.ukma.oss.voting.VoteRecordDto;
 import ua.edu.ukma.oss.voting.VotingDto;
-import ua.edu.ukma.oss.voting.VotingResult;
 import ua.edu.ukma.oss.voting.VotingService;
 
 @Service
@@ -30,78 +25,45 @@ class VotingServiceImpl implements VotingService {
     private final VotingRepository votings;
     private final VoteRecordRepository records;
     private final ProtocolReader protocols;
-    private final MeetingService meetings;
     private final OrganizationService organizations;
+    private final UserService users;
 
     VotingServiceImpl(VotingRepository votings, VoteRecordRepository records, ProtocolReader protocols,
-                      MeetingService meetings, OrganizationService organizations) {
+                      OrganizationService organizations, UserService users) {
         this.votings = votings;
         this.records = records;
         this.protocols = protocols;
-        this.meetings = meetings;
         this.organizations = organizations;
+        this.users = users;
     }
 
     @Override
-    public VotingDto create(CreateVotingCmd cmd) {
-        if (cmd.question() == null || cmd.question().isBlank()) {
-            throw new BusinessRuleException("Вкажіть питання голосування");
+    public List<VotingDto> importFromDocument(Long protocolId, String fileName, byte[] content) {
+        ProtocolDto protocol = protocols.get(protocolId);
+        if (protocol.status() != ProtocolStatus.DRAFT) {
+            throw new BusinessRuleException("Голосування можна змінювати лише доки протокол є чернеткою");
         }
-        ProtocolDto protocol = requireDraft(cmd.protocolId());
-        if (cmd.agendaItemId() != null) {
-            boolean belongs = meetings.get(protocol.meetingId()).agenda().stream()
-                    .anyMatch(item -> item.id().equals(cmd.agendaItemId()));
-            if (!belongs) {
-                throw new BusinessRuleException("Пункт порядку денного не належить засіданню цього протоколу");
-            }
+        List<ParsedVoting> parsed = ProtocolVotingParser.parse(ProtocolTextExtractor.extract(fileName, content));
+        Map<String, Long> seats = parsed.stream().anyMatch(p -> !p.named().isEmpty())
+                ? seatsByName(protocol.orgId()) : Map.of();
+
+        for (Voting old : votings.findByProtocolIdOrderById(protocolId)) {
+            records.deleteByVotingId(old.getId());
+            votings.delete(old);
         }
-        return toDto(votings.save(new Voting(cmd.protocolId(), cmd.agendaItemId(), cmd.question().trim())));
+        votings.flush();
+        return parsed.stream().map(p -> {
+            Voting voting = votings.save(new Voting(protocolId, p));
+            p.named().forEach((name, choice) -> records.save(new VoteRecord(voting.getId(), seat(seats, name), choice)));
+            return toDto(voting);
+        }).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public VotingDto get(Long votingId) {
-        return toDto(find(votingId));
-    }
-
-    @Override
-    public VotingDto record(RecordCmd cmd) {
-        Voting voting = find(cmd.votingId());
-        ProtocolDto protocol = requireDraft(voting.getProtocolId());
-        List<MembershipDto> body = organizations.members(protocol.orgId());
-        Set<Long> memberIds = body.stream().map(MembershipDto::id).collect(Collectors.toSet());
-        if (!memberIds.containsAll(cmd.choices().keySet())) {
-            throw new BusinessRuleException("Голоси можна вносити лише за чинних членів органу");
-        }
-        if (memberIds.isEmpty()) {
-            throw new BusinessRuleException("В органі немає членів, які могли б голосувати");
-        }
-
-        Map<Long, VoteRecord> existing = records.findByVotingIdOrderByMembershipId(voting.getId()).stream()
-                .collect(Collectors.toMap(VoteRecord::getMembershipId, r -> r));
-        Map<Long, VoteChoice> effective = new HashMap<>();
-        for (Long memberId : memberIds) {
-            VoteChoice choice = cmd.choices().getOrDefault(memberId, VoteChoice.ABSENT);
-            effective.put(memberId, choice);
-            VoteRecord record = existing.get(memberId);
-            if (record == null) {
-                records.save(new VoteRecord(voting.getId(), memberId, choice));
-            } else {
-                record.setChoice(choice);
-            }
-        }
-        voting.applyTally(VoteCounter.count(effective.values()));
-        return toDto(voting);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public VotingResult tally(Long votingId) {
-        find(votingId);
-        VoteCounter.Counts c = VoteCounter.count(records.findByVotingIdOrderByMembershipId(votingId).stream()
-                .map(VoteRecord::getChoice).toList());
-        return new VotingResult(votingId, c.votesFor(), c.votesAgainst(), c.votesAbstain(), c.votesAbsent(),
-                c.bodySize(), c.result());
+        return votings.findById(votingId).map(VotingServiceImpl::toDto)
+                .orElseThrow(() -> new NotFoundException("Voting", votingId));
     }
 
     @Override
@@ -117,28 +79,32 @@ class VotingServiceImpl implements VotingService {
                 .map(r -> new VoteRecordDto(r.getMembershipId(), r.getChoice())).toList();
     }
 
-    @Override
-    public void remove(Long votingId) {
-        Voting voting = find(votingId);
-        requireDraft(voting.getProtocolId());
-        records.deleteByVotingId(votingId);
-        votings.delete(voting);
+    /**
+     * Every membership ever seated in the body by member name; a person seated twice maps to the latest seat.
+     */
+    private Map<String, Long> seatsByName(Long orgId) {
+        List<MembershipDto> history = organizations.history(orgId);
+        Map<Long, String> names = users.fullNames(history.stream().map(MembershipDto::userId).toList());
+        Map<String, Long> seats = new HashMap<>();
+        history.stream().sorted(java.util.Comparator.comparing(MembershipDto::id))
+                .forEach(m -> seats.put(normalise(names.getOrDefault(m.userId(), "")), m.id()));
+        return seats;
     }
 
-    private ProtocolDto requireDraft(Long protocolId) {
-        ProtocolDto protocol = protocols.get(protocolId);
-        if (protocol.status() != ProtocolStatus.DRAFT) {
-            throw new BusinessRuleException("Голосування можна змінювати лише доки протокол є чернеткою");
+    private static Long seat(Map<String, Long> seats, String name) {
+        Long id = seats.get(normalise(name));
+        if (id == null) {
+            throw new BusinessRuleException("«" + name + "» немає у складі органу, тому голос не можна зарахувати");
         }
-        return protocol;
+        return id;
     }
 
-    private Voting find(Long id) {
-        return votings.findById(id).orElseThrow(() -> new NotFoundException("Voting", id));
+    private static String normalise(String name) {
+        return name.toLowerCase(Locale.ROOT).replace('’', '\'').replaceAll("\\s+", " ").trim();
     }
 
     private static VotingDto toDto(Voting v) {
-        return new VotingDto(v.getId(), v.getProtocolId(), v.getAgendaItemId(), v.getQuestion(), v.getResult(),
-                v.getVotesFor(), v.getVotesAgainst(), v.getVotesAbstain());
+        return new VotingDto(v.getId(), v.getProtocolId(), v.getQuestion(), v.getResult(), v.getVotesFor(),
+                v.getVotesAgainst(), v.getVotesAbstain(), v.getVotesAbsent(), v.getPresent());
     }
 }
