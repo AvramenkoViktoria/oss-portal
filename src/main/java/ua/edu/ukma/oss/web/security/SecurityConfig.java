@@ -26,6 +26,9 @@ class SecurityConfig {
         http
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .csrf(csrf -> csrf
+                        // The token cookie authenticates every request anew; the default strategy would
+                        // rotate the CSRF token each time and invalidate forms open in other tabs.
+                        .sessionAuthenticationStrategy((authentication, request, response) -> { })
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler()))
                 .authorizeHttpRequests(auth -> auth
