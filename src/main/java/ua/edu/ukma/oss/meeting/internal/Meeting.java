@@ -34,6 +34,9 @@ class Meeting extends BaseEntity {
     @Column(nullable = false)
     private MeetingStatus status = MeetingStatus.PLANNED;
 
+    @Column(name = "reminder_sent_at")
+    private Instant reminderSentAt;
+
     protected Meeting() {
     }
 
@@ -69,6 +72,11 @@ class Meeting extends BaseEntity {
         this.title = title;
         this.scheduledAt = scheduledAt;
         this.streamUrl = streamUrl;
+        this.reminderSentAt = null;
+    }
+
+    void markReminded(Instant now) {
+        this.reminderSentAt = now;
     }
 
     /**

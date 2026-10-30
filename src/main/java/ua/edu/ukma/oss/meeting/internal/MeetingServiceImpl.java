@@ -1,6 +1,7 @@
 package ua.edu.ukma.oss.meeting.internal;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -14,6 +15,7 @@ import ua.edu.ukma.oss.meeting.MeetingDto;
 import ua.edu.ukma.oss.meeting.MeetingHeldEvent;
 import ua.edu.ukma.oss.meeting.MeetingScheduledEvent;
 import ua.edu.ukma.oss.meeting.MeetingService;
+import ua.edu.ukma.oss.meeting.MeetingStatus;
 import ua.edu.ukma.oss.meeting.ScheduleCmd;
 import ua.edu.ukma.oss.shared.BusinessRuleException;
 import ua.edu.ukma.oss.shared.NotFoundException;
@@ -89,6 +91,16 @@ class MeetingServiceImpl implements MeetingService {
         meeting.markHeld(clock.instant());
         events.publishEvent(new MeetingHeldEvent(meeting.getId(), meeting.getOrgId()));
         return mapper.toDto(meeting, agenda.findByMeetingIdOrderByPosition(meetingId));
+    }
+
+    @Override
+    public List<MeetingDto> claimReminders(Duration lead) {
+        Instant now = clock.instant();
+        List<Meeting> due = meetings
+                .findByStatusAndReminderSentAtIsNullAndScheduledAtAfterAndScheduledAtLessThanEqualOrderByScheduledAt(
+                        MeetingStatus.PLANNED, now, now.plus(lead));
+        due.forEach(m -> m.markReminded(now));
+        return due.stream().map(m -> mapper.toDto(m, List.of())).toList();
     }
 
     @Override

@@ -45,4 +45,5 @@ oss:
     immediate-retries: 2
     backoff: 30s
     poll-interval: 10s
+    reminder-interval: 1m
     public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}

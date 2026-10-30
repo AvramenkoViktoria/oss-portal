@@ -1,5 +1,6 @@
 package ua.edu.ukma.oss.meeting;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -31,6 +32,13 @@ public interface MeetingService {
      * Marks a started meeting as held and publishes {@link MeetingHeldEvent}.
      */
     MeetingDto markHeld(Long meetingId);
+
+    /**
+     * Planned meetings that start within {@code lead} from now and were not reminded yet; each is marked as
+     * reminded, so a meeting is returned once until it is rescheduled. Meetings created closer to the start than
+     * {@code lead} are returned right away.
+     */
+    List<MeetingDto> claimReminders(Duration lead);
 
     /**
      * Cancels a planned meeting and publishes {@link MeetingCancelledEvent}.
